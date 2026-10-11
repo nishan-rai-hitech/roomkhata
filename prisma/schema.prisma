@@ -1,0 +1,168 @@
+// RoomKhata data model. All money is stored as INTEGER PAISA (see src/lib/money.ts).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String    @id @default(cuid())
+  name         String
+  email        String    @unique
+  passwordHash String
+  avatarColor  String
+  language     String    @default("en")
+  // Notification preferences (stored only — no delivery channel yet).
+  notifyExpense    Boolean @default(true)
+  notifySettlement Boolean @default(true)
+  notifyMonthly    Boolean @default(false)
+  notifyReminders  Boolean @default(true)
+  createdAt    DateTime  @default(now())
+  deletedAt    DateTime?
+
+  sessions      Session[]
+  resetTokens   PasswordResetToken[]
+  memberships   Membership[]
+}
+
+model Session {
+  // SHA-256 of the cookie token; the raw token only ever lives in the cookie.
+  tokenHash String   @id
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model PasswordResetToken {
+  tokenHash String    @id
+  userId    String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Room {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  currency    String    @default("NPR")
+  timezone    String    @default("Asia/Kathmandu")
+  inviteCode  String    @unique
+  createdAt   DateTime  @default(now())
+  archivedAt  DateTime?
+
+  memberships Membership[]
+  invites     Invite[]
+  expenses    Expense[]
+  settlements Settlement[]
+  auditLogs   AuditLog[]
+}
+
+model Membership {
+  roomId   String
+  userId   String
+  role     String   @default("member") // owner | admin | member
+  joinedAt DateTime @default(now())
+  // Removed/left members stay as inactive rows so history keeps their names.
+  active   Boolean  @default(true)
+
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id])
+
+  @@id([roomId, userId])
+  @@index([userId])
+}
+
+model Invite {
+  id          String    @id @default(cuid())
+  roomId      String
+  email       String
+  invitedById String
+  expiresAt   DateTime
+  acceptedAt  DateTime?
+  createdAt   DateTime  @default(now())
+
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@unique([roomId, email])
+  @@index([email])
+}
+
+model Expense {
+  id          String    @id @default(cuid())
+  roomId      String
+  title       String
+  category    String
+  amount      Int // paisa
+  payerId     String
+  createdById String
+  date        String // effective date, YYYY-MM-DD
+  splitMethod String // equal | shares | exact | percent
+  isPersonal  Boolean   @default(false)
+  note        String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  // Soft delete: the record, actor and reason are kept for auditability.
+  deletedAt    DateTime?
+  deletedById  String?
+  deleteReason String?
+
+  room   Room           @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  shares ExpenseShare[]
+
+  @@index([roomId, date])
+}
+
+model ExpenseShare {
+  expenseId String
+  userId    String
+  amount    Int // paisa; shares of an expense sum to its amount
+
+  expense Expense @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+
+  @@id([expenseId, userId])
+}
+
+model Settlement {
+  id          String   @id @default(cuid())
+  roomId      String
+  fromUserId  String
+  toUserId    String
+  amount      Int // paisa
+  date        String // YYYY-MM-DD
+  method      String // cash | bank | wallet
+  note        String?
+  createdById String
+  createdAt   DateTime @default(now())
+
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@index([roomId, date])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  roomId     String
+  actorId    String
+  action     String // e.g. expense.create, expense.update, expense.delete
+  entityType String
+  entityId   String
+  data       String? // JSON snapshot
+  createdAt  DateTime @default(now())
+
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@index([roomId, createdAt])
+}

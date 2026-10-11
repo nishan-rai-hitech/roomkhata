@@ -1,0 +1,120 @@
+@import "tailwindcss";
+
+/* ───────────────────────── Design tokens ───────────────────────── */
+:root {
+  /* Surfaces — clean & minimal: near-white, hairline borders */
+  --background: #fbfbfa;
+  --surface: #ffffff;
+  --surface-2: #f5f6f5;
+  --foreground: #18181b;
+  --muted: #71717a;
+  --border: #ececec;
+  --border-strong: #dcdcdc;
+
+  /* Brand — emerald */
+  --primary: #059669;
+  --primary-hover: #047857;
+  --primary-fg: #ffffff;
+  --primary-soft: #ecfdf5;
+
+  /* Semantic money colors */
+  --positive: #059669;   /* you are owed / credit */
+  --positive-soft: #ecfdf5;
+  --negative: #dc2626;   /* you owe / debit */
+  --negative-soft: #fef2f2;
+  --warning: #d97706;
+  --warning-soft: #fffbeb;
+
+  --ring: rgba(5, 150, 105, 0.3);
+  --radius: 0.625rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --background: #0a0b0a;
+    --surface: #141615;
+    --surface-2: #1c1f1d;
+    --foreground: #e8eae8;
+    --muted: #9aa09c;
+    --border: #262927;
+    --border-strong: #353a37;
+
+    --primary: #34d399;
+    --primary-hover: #6ee7b7;
+    --primary-fg: #06251a;
+    --primary-soft: #0f2a20;
+
+    --positive: #34d399;
+    --positive-soft: #0f2a20;
+    --negative: #f87171;
+    --negative-soft: #2a1515;
+    --warning: #fbbf24;
+    --warning-soft: #2a2010;
+
+    --ring: rgba(52, 211, 153, 0.4);
+  }
+}
+
+:root[data-theme="dark"] {
+  --background: #0a0b0a;
+  --surface: #141615;
+  --surface-2: #1c1f1d;
+  --foreground: #e8eae8;
+  --muted: #9aa09c;
+  --border: #262927;
+  --border-strong: #353a37;
+  --primary: #34d399;
+  --primary-hover: #6ee7b7;
+  --primary-fg: #06251a;
+  --primary-soft: #0f2a20;
+  --positive: #34d399;
+  --positive-soft: #0f2a20;
+  --negative: #f87171;
+  --negative-soft: #2a1515;
+  --warning: #fbbf24;
+  --warning-soft: #2a2010;
+  --ring: rgba(52, 211, 153, 0.4);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-fg: var(--primary-fg);
+  --color-primary-soft: var(--primary-soft);
+  --color-positive: var(--positive);
+  --color-positive-soft: var(--positive-soft);
+  --color-negative: var(--negative);
+  --color-negative-soft: var(--negative-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --radius-lg: var(--radius);
+}
+
+* {
+  border-color: var(--border);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Numbers align nicely in ledgers */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+::selection {
+  background: var(--primary-soft);
+}
