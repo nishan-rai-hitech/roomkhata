@@ -11,6 +11,7 @@ import {
   oneOf,
   optStr,
   requireMember,
+  requireVerifiedUser,
   revalidateApp,
   run,
   str,
@@ -19,7 +20,7 @@ import { db } from "@/lib/server/db";
 import { appUrl, sendMail } from "@/lib/server/mail";
 import { roomNets } from "@/lib/server/nets";
 import { rateLimit } from "@/lib/server/rate-limit";
-import { ROOM_COOKIE, SECURE_COOKIES, requireUser } from "@/lib/server/session";
+import { ROOM_COOKIE, SECURE_COOKIES } from "@/lib/server/session";
 
 const INVITE_DAYS = 7;
 // No 0/O/1/I so codes are easy to read aloud and type.
@@ -64,7 +65,7 @@ export async function createRoomAction(input: {
   timezone: string;
 }): Promise<ActionResult<{ id: string; name: string; inviteCode: string }>> {
   return run(async () => {
-    const user = await requireUser();
+    const user = await requireVerifiedUser();
     const name = str(input?.name, "Room name", 80);
     const description = optStr(input?.description, "Description", 200);
     const timezone = oneOf(input?.timezone, TIMEZONES, "Timezone");
@@ -87,7 +88,7 @@ export async function joinRoomAction(input: {
   code: string;
 }): Promise<ActionResult<{ id: string; name: string }>> {
   return run(async () => {
-    const user = await requireUser();
+    const user = await requireVerifiedUser();
     const code = str(input?.code, "Invite code", 40).toUpperCase();
     // Invite codes are bearer secrets, so guessing them is throttled.
     await rateLimit("join", { perIp: 20, perSubject: 10, subject: user.id, minutes: 15 });
@@ -293,15 +294,11 @@ export async function respondToInviteAction(
   accept: boolean,
 ): Promise<ActionResult<{ roomName: string }>> {
   return run(async () => {
-    const user = await requireUser();
+    const user = await requireVerifiedUser();
     const invite = await db.invite.findUnique({ where: { id: inviteId }, include: { room: true } });
     // The invite must be addressed to this user's own email.
     if (!invite || invite.email !== user.email || invite.acceptedAt) {
       throw new ActionError("Invitation not found.");
-    }
-    // Without this, anyone could register someone else's address and take their invite.
-    if (!user.emailVerified) {
-      throw new ActionError("Verify your email address before responding to invitations.");
     }
     if (!accept) {
       await db.invite.delete({ where: { id: inviteId } });

@@ -5,18 +5,15 @@ import type { User } from "@/lib/types";
 import { useState, type ReactNode } from "react";
 import { Sidebar } from "./sidebar";
 import { Topbar, type RoomOption } from "./topbar";
-import { VerifyEmailBanner } from "./verify-email-banner";
 
 export function AppShell({
   user,
-  emailVerified,
   isAdmin,
   rooms,
   currentRoomId,
   children,
 }: {
   user: User;
-  emailVerified: boolean;
   isAdmin: boolean;
   rooms: RoomOption[];
   currentRoomId: string | null;
@@ -53,7 +50,6 @@ export function AppShell({
           currentRoomId={currentRoomId}
           onOpenMenu={() => setMobileOpen(true)}
         />
-        {!emailVerified && <VerifyEmailBanner email={user.email} />}
         <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
           <div className="mx-auto w-full max-w-6xl animate-in fade-in slide-in-from-bottom-1 duration-300">
             {children}

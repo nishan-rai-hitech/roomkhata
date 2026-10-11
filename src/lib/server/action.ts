@@ -27,6 +27,18 @@ export function revalidateApp(): void {
 }
 
 /**
+ * The signed-in user, once they've confirmed their email. The UI hides the app
+ * from unverified accounts, but Server Actions are reachable by direct POST.
+ */
+export async function requireVerifiedUser() {
+  const user = await requireUser();
+  if (!user.emailVerified) {
+    throw new ActionError("Confirm your email address to start using RoomKhata.");
+  }
+  return user;
+}
+
+/**
  * Authorize the signed-in user against a room. Server Actions are reachable by
  * direct POST, so every mutation re-checks membership here.
  */
@@ -34,7 +46,7 @@ export async function requireMember(
   roomId: string,
   opts: { manage?: boolean; allowArchived?: boolean } = {},
 ) {
-  const user = await requireUser();
+  const user = await requireVerifiedUser();
   const room = await db.room.findUnique({
     where: { id: roomId },
     include: { memberships: true },

@@ -1,5 +1,6 @@
 import { AppShell } from "@/components/shell/app-shell";
 import { AppSkeleton } from "@/components/shell/app-skeleton";
+import { VerifyEmailGate } from "@/components/shell/verify-email-gate";
 import { getAppContext } from "@/lib/server/data";
 import { Suspense, type ReactNode } from "react";
 
@@ -15,10 +16,11 @@ export default function AppGroupLayout({ children }: { children: ReactNode }) {
 
 async function AuthedShell({ children }: { children: ReactNode }) {
   const { user, rooms, room } = await getAppContext();
+  // Nothing in the app is reachable until the address is confirmed.
+  if (!user.emailVerified) return <VerifyEmailGate name={user.name} email={user.email} />;
   return (
     <AppShell
       user={{ id: user.id, name: user.name, email: user.email, avatarColor: user.avatarColor }}
-      emailVerified={user.emailVerified}
       isAdmin={user.isAdmin}
       rooms={rooms.map((r) => ({ id: r.id, name: r.name, archived: r.archived }))}
       currentRoomId={room?.id ?? null}
