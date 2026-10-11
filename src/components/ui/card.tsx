@@ -5,7 +5,8 @@ export function Card({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
   return (
     <div
       className={cn(
-        "rounded-xl border border-border bg-card text-card-foreground shadow-xs",
+        // min-w-0: as a grid/flex item, shrink to the track so long text truncates instead of widening the page.
+        "min-w-0 rounded-xl border border-border bg-card text-card-foreground shadow-xs",
         className,
       )}
       {...props}

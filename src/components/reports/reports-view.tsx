@@ -8,10 +8,11 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { OptionSelect } from "@/components/ui/select";
 import { StatCard } from "@/components/ui/stat";
 import { PageHeader } from "@/components/shell/page-header";
+import { bsMonthKey } from "@/lib/bs";
 import { CATEGORY_COLORS } from "@/lib/constants";
 import { formatNpr, toRupees } from "@/lib/money";
 import type { Category, Expense, Room } from "@/lib/types";
-import { cn, monthLabel } from "@/lib/utils";
+import { cn, formatDate, monthLabel } from "@/lib/utils";
 import {
   ChartPie,
   CircleAlert,
@@ -32,7 +33,7 @@ export function ReportsView({
   room: Room;
   currentUserId: string;
   expenses: Expense[];
-  /** This month in the room's timezone, YYYY-MM. */
+  /** This BS month in the room's timezone, as a `bsMonthKey`. */
   currentMonth: string;
 }) {
   const members = room.members;
@@ -40,14 +41,14 @@ export function ReportsView({
 
   // The current month plus every month present in the data (effective date, descending).
   const months = useMemo(
-    () => [...new Set([currentMonth, ...expenses.map((e) => e.date.slice(0, 7))])].sort().reverse(),
+    () => [...new Set([currentMonth, ...expenses.map((e) => bsMonthKey(e.date))])].sort().reverse(),
     [currentMonth, expenses],
   );
   const [month, setMonth] = useState(currentMonth);
 
   // Shared expenses whose EFFECTIVE date falls in the selected month.
   const monthExpenses = useMemo(
-    () => expenses.filter((e) => !e.isPersonal && e.date.startsWith(month)),
+    () => expenses.filter((e) => !e.isPersonal && bsMonthKey(e.date) === month),
     [expenses, month],
   );
 
@@ -88,16 +89,17 @@ export function ReportsView({
 
   function exportCsv() {
     const rows = [
-      ["Title", "Category", "Paid by", "Date", "Amount (Rs)"],
+      ["Title", "Category", "Paid by", "Date (BS)", "Date (AD)", "Amount (Rs)"],
       ...monthExpenses.map((e) => [
         e.title,
         e.category,
         nameOf(e.payerId),
+        formatDate(e.date),
         e.date,
         toRupees(e.amount).toFixed(2),
       ]),
       [],
-      ["Total", "", "", "", toRupees(total).toFixed(2)],
+      ["Total", "", "", "", "", toRupees(total).toFixed(2)],
     ];
     const csv = rows
       .map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(","))

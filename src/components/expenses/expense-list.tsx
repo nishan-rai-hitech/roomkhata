@@ -216,22 +216,24 @@ export function ExpenseList({
                               size="sm"
                               className="size-4 text-[8px]"
                             />
-                            Paid by{" "}
-                            {e.payerId === currentUserId ? "you" : nameOf(e.payerId).split(" ")[0]} ·{" "}
-                            {e.category}
+                            <span className="truncate">
+                              Paid by{" "}
+                              {e.payerId === currentUserId ? "you" : nameOf(e.payerId).split(" ")[0]} ·{" "}
+                              {e.category}
+                            </span>
                           </p>
                         </div>
-                        <div className="text-right">
+                        <div className="shrink-0 text-right">
                           <p className="text-sm font-semibold tabular">{formatNpr(e.amount)}</p>
                           {!e.isPersonal && (
                             <p className="text-xs text-muted-foreground tabular">
-                              your share {formatNpr(myS)}
+                              <span className="hidden sm:inline">your </span>share {formatNpr(myS)}
                             </p>
                           )}
                         </div>
                         <ChevronRight
                           size={16}
-                          className="text-muted-foreground/50 transition-transform group-hover:translate-x-0.5"
+                          className="hidden text-muted-foreground/50 transition-transform group-hover:translate-x-0.5 sm:block"
                         />
                       </Link>
                     );

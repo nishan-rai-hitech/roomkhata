@@ -1,5 +1,6 @@
 import { ReportsView } from "@/components/reports/reports-view";
 import { NoRoom } from "@/components/shell/no-room";
+import { bsMonthKey } from "@/lib/bs";
 import { getAppContext, getLedger, todayIn } from "@/lib/server/data";
 
 export default async function ReportsPage() {
@@ -11,7 +12,7 @@ export default async function ReportsPage() {
       room={room}
       currentUserId={user.id}
       expenses={expenses}
-      currentMonth={todayIn(room.timezone).slice(0, 7)}
+      currentMonth={bsMonthKey(todayIn(room.timezone))}
     />
   );
 }

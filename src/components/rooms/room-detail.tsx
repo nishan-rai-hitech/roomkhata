@@ -279,7 +279,7 @@ export function RoomDetail({
                       </DropdownMenuContent>
                     </DropdownMenu>
                   ) : (
-                    <span className="w-9" />
+                    <span className="hidden w-9 sm:block" />
                   )}
                 </div>
               );

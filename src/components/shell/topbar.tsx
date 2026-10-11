@@ -57,7 +57,7 @@ export function Topbar({
         variant="ghost"
         size="icon"
         onClick={onOpenMenu}
-        className="lg:hidden"
+        className="shrink-0 lg:hidden"
         aria-label="Open menu"
       >
         <Menu />
@@ -69,7 +69,7 @@ export function Topbar({
           <Button
             variant="outline"
             disabled={switching}
-            className="h-10 max-w-[60vw] gap-2.5 px-2.5 sm:max-w-xs"
+            className="h-10 min-w-0 max-w-xs shrink gap-2.5 px-2.5"
             aria-label="Switch room"
           >
             <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-primary text-xs font-bold text-primary-foreground">
@@ -111,7 +111,7 @@ export function Topbar({
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <div className="ml-auto flex items-center gap-1.5">
+      <div className="ml-auto flex shrink-0 items-center gap-1.5">
         {currentRoom && !currentRoom.archived && (
           <Button asChild size="sm" className="hidden h-9 sm:inline-flex">
             <Link href="/expenses/new">

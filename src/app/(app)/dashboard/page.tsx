@@ -10,6 +10,7 @@ import { PageHeader } from "@/components/shell/page-header";
 import { computeBalances, suggestSettlements } from "@/lib/balances";
 import { formatNpr } from "@/lib/money";
 import { getAppContext, getLedger, todayIn } from "@/lib/server/data";
+import { bsMonthKey } from "@/lib/bs";
 import { cn, formatDate, monthLabel } from "@/lib/utils";
 import {
   ArrowDownLeft,
@@ -42,9 +43,9 @@ export default async function DashboardPage() {
     (s) => s.fromUserId === user.id || s.toUserId === user.id,
   );
 
-  // The current month in the room's own timezone.
-  const monthKey = todayIn(room.timezone).slice(0, 7);
-  const monthExpenses = expenses.filter((e) => !e.isPersonal && e.date.startsWith(monthKey));
+  // The current BS month in the room's own timezone.
+  const monthKey = bsMonthKey(todayIn(room.timezone));
+  const monthExpenses = expenses.filter((e) => !e.isPersonal && bsMonthKey(e.date) === monthKey);
   const sharedThisMonth = monthExpenses.reduce((a, e) => a + e.amount, 0);
   const myShareThisMonth = monthExpenses.reduce(
     (a, e) => a + (e.shares.find((s) => s.userId === user.id)?.amount ?? 0),
