@@ -17,7 +17,9 @@ async function AuthedShell({ children }: { children: ReactNode }) {
   const { user, rooms, room } = await getAppContext();
   return (
     <AppShell
-      user={user}
+      user={{ id: user.id, name: user.name, email: user.email, avatarColor: user.avatarColor }}
+      emailVerified={user.emailVerified}
+      isAdmin={user.isAdmin}
       rooms={rooms.map((r) => ({ id: r.id, name: r.name, archived: r.archived }))}
       currentRoomId={room?.id ?? null}
     >

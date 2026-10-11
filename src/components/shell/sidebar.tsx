@@ -9,10 +9,19 @@ import { cn } from "@/lib/utils";
 import { LogOut } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { navItems } from "./nav";
+import { adminNavItem, navItems } from "./nav";
 
-export function Sidebar({ user, onNavigate }: { user: User; onNavigate?: () => void }) {
+export function Sidebar({
+  user,
+  isAdmin = false,
+  onNavigate,
+}: {
+  user: User;
+  isAdmin?: boolean;
+  onNavigate?: () => void;
+}) {
   const pathname = usePathname();
+  const items = isAdmin ? [...navItems, adminNavItem] : navItems;
 
   return (
     <div className="flex h-full flex-col bg-sidebar px-3 py-5 text-sidebar-foreground">
@@ -24,7 +33,7 @@ export function Sidebar({ user, onNavigate }: { user: User; onNavigate?: () => v
         Menu
       </p>
       <nav className="flex flex-col gap-1">
-        {navItems.map((item) => {
+        {items.map((item) => {
           const active = pathname === item.href || pathname.startsWith(item.href + "/");
           const Icon = item.icon;
           return (

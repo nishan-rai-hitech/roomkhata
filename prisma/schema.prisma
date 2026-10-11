@@ -23,9 +23,12 @@ model User {
   notifyReminders  Boolean @default(true)
   createdAt    DateTime  @default(now())
   deletedAt    DateTime?
+  // Set once the user proves they own the address; email invitations require it.
+  emailVerifiedAt DateTime?
 
   sessions      Session[]
   resetTokens   PasswordResetToken[]
+  verifyTokens  EmailVerificationToken[]
   memberships   Membership[]
 }
 
@@ -47,6 +50,19 @@ model PasswordResetToken {
   expiresAt DateTime
   usedAt    DateTime?
   createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model EmailVerificationToken {
+  tokenHash String   @id
+  userId    String
+  // The address being verified, so a link sent to an old address can't verify a new one.
+  email     String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

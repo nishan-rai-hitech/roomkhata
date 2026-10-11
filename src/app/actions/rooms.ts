@@ -18,6 +18,7 @@ import {
 import { db } from "@/lib/server/db";
 import { appUrl, sendMail } from "@/lib/server/mail";
 import { roomNets } from "@/lib/server/nets";
+import { rateLimit } from "@/lib/server/rate-limit";
 import { ROOM_COOKIE, SECURE_COOKIES, requireUser } from "@/lib/server/session";
 
 const INVITE_DAYS = 7;
@@ -88,6 +89,8 @@ export async function joinRoomAction(input: {
   return run(async () => {
     const user = await requireUser();
     const code = str(input?.code, "Invite code", 40).toUpperCase();
+    // Invite codes are bearer secrets, so guessing them is throttled.
+    await rateLimit("join", { perIp: 20, perSubject: 10, subject: user.id, minutes: 15 });
     const room = await db.room.findUnique({
       where: { inviteCode: code },
       include: { memberships: true },
@@ -254,6 +257,7 @@ export async function inviteByEmailAction(
   return run(async () => {
     const { user, room } = await requireMember(roomId, { manage: true });
     const email = parseEmail(input?.email);
+    await rateLimit("invite", { perIp: 40, perSubject: 20, subject: user.id, minutes: 60 });
     const existing = await db.user.findUnique({ where: { email } });
     if (existing && room.memberships.some((m) => m.userId === existing.id && m.active)) {
       throw new ActionError("That person is already a member of this room.");
@@ -272,7 +276,7 @@ export async function inviteByEmailAction(
         "",
         existing
           ? `Log in and open Rooms to accept: ${appUrl()}/rooms`
-          : `Create an account with this email address (${email}), then open Rooms to accept: ${appUrl()}/register`,
+          : `Create an account with this email address (${email}), confirm it from the email we send you, then open Rooms to accept: ${appUrl()}/register`,
         "",
         `You can also join with the invite code ${room.inviteCode}.`,
         "",
@@ -295,6 +299,10 @@ export async function respondToInviteAction(
     if (!invite || invite.email !== user.email || invite.acceptedAt) {
       throw new ActionError("Invitation not found.");
     }
+    // Without this, anyone could register someone else's address and take their invite.
+    if (!user.emailVerified) {
+      throw new ActionError("Verify your email address before responding to invitations.");
+    }
     if (!accept) {
       await db.invite.delete({ where: { id: inviteId } });
       revalidateApp();
@@ -308,5 +316,17 @@ export async function respondToInviteAction(
     await selectRoom(invite.roomId);
     revalidateApp();
     return { roomName: invite.room.name };
+  });
+}
+
+/** Withdraw an invitation that hasn't been accepted yet. */
+export async function cancelInviteAction(inviteId: string): Promise<ActionResult<null>> {
+  return run(async () => {
+    const invite = await db.invite.findUnique({ where: { id: str(inviteId, "Invitation", 60) } });
+    if (!invite || invite.acceptedAt) throw new ActionError("Invitation not found.");
+    await requireMember(invite.roomId, { manage: true });
+    await db.invite.delete({ where: { id: invite.id } });
+    revalidateApp();
+    return null;
   });
 }

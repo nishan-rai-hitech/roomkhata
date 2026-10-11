@@ -5,6 +5,7 @@ import {
   Users,
   FileBarChart,
   Settings,
+  ShieldCheck,
   type LucideIcon,
 } from "lucide-react";
 
@@ -22,3 +23,6 @@ export const navItems: NavItem[] = [
   { label: "Reports", href: "/reports", icon: FileBarChart },
   { label: "Settings", href: "/settings", icon: Settings },
 ];
+
+/** Only shown to platform admins (see ADMIN_EMAILS). */
+export const adminNavItem: NavItem = { label: "Admin", href: "/admin", icon: ShieldCheck };

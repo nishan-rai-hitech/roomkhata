@@ -14,6 +14,20 @@ export const SECURE_COOKIES = (process.env.APP_URL ?? "").startsWith("https://")
 
 const SESSION_DAYS = 30;
 
+/** The signed-in user plus account state that never leaves the server layer by default. */
+export interface SessionUser extends User {
+  emailVerified: boolean;
+  /** Listed in ADMIN_EMAILS and verified: may open the platform admin page. */
+  isAdmin: boolean;
+}
+
+const ADMIN_EMAILS = new Set(
+  (process.env.ADMIN_EMAILS ?? "")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean),
+);
+
 export async function createSession(userId: string): Promise<void> {
   const token = newToken();
   const expiresAt = new Date(Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000);
@@ -36,7 +50,7 @@ export async function destroySession(): Promise<void> {
 }
 
 /** The signed-in user, or null. Deduplicated per request. */
-export const getCurrentUser = cache(async (): Promise<User | null> => {
+export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
   const token = (await cookies()).get(SESSION_COOKIE)?.value;
   if (!token) return null;
   const session = await db.session.findUnique({
@@ -45,10 +59,12 @@ export const getCurrentUser = cache(async (): Promise<User | null> => {
   });
   if (!session || session.expiresAt < new Date() || session.user.deletedAt) return null;
   const { id, name, email, avatarColor } = session.user;
-  return { id, name, email, avatarColor };
+  const emailVerified = session.user.emailVerifiedAt !== null;
+  // An unverified address proves nothing, so it never grants admin.
+  return { id, name, email, avatarColor, emailVerified, isAdmin: emailVerified && ADMIN_EMAILS.has(email) };
 });
 
-export async function requireUser(): Promise<User> {
+export async function requireUser(): Promise<SessionUser> {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   return user;

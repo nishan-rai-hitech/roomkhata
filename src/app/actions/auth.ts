@@ -4,11 +4,13 @@ import { redirect } from "next/navigation";
 import { after } from "next/server";
 import type { ActionResult } from "@/lib/action-result";
 import { AVATAR_COLORS } from "@/lib/constants";
-import { ActionError, email as parseEmail, run, str } from "@/lib/server/action";
+import { ActionError, email as parseEmail, revalidateApp, run, str } from "@/lib/server/action";
 import { db } from "@/lib/server/db";
 import { appUrl, sendMail } from "@/lib/server/mail";
 import { hashPassword, hashToken, newToken, verifyPassword } from "@/lib/server/password";
+import { rateLimit } from "@/lib/server/rate-limit";
 import { createSession, destroySession, requireUser } from "@/lib/server/session";
+import { sendVerificationEmail } from "@/lib/server/verify-email";
 
 const RESET_MINUTES = 30;
 
@@ -29,6 +31,7 @@ export async function registerAction(input: {
     const name = str(input?.name, "Full name", 80);
     const email = parseEmail(input?.email);
     const password = parsePassword(input?.password);
+    await rateLimit("register", { perIp: 5, minutes: 60 });
 
     if (await db.user.findUnique({ where: { email } })) {
       throw new ActionError("An account with this email already exists.");
@@ -42,6 +45,7 @@ export async function registerAction(input: {
         avatarColor: AVATAR_COLORS[count % AVATAR_COLORS.length],
       },
     });
+    await sendVerificationEmail(user);
     await createSession(user.id);
     return null;
   });
@@ -56,6 +60,7 @@ export async function loginAction(input: {
   const result = await run(async () => {
     const email = parseEmail(input?.email);
     const password = typeof input?.password === "string" ? input.password : "";
+    await rateLimit("login", { perIp: 20, perSubject: 8, subject: email, minutes: 15 });
     const user = await db.user.findUnique({ where: { email } });
     const valid =
       !!user && !user.deletedAt && (await verifyPassword(password, user.passwordHash));
@@ -84,6 +89,7 @@ export async function requestPasswordResetAction(input: {
 }): Promise<ActionResult<null>> {
   return run(async () => {
     const email = parseEmail(input?.email);
+    await rateLimit("reset-request", { perIp: 10, perSubject: 3, subject: email, minutes: 15 });
     const user = await db.user.findUnique({ where: { email } });
     if (user && !user.deletedAt) {
       const token = newToken();
@@ -128,6 +134,7 @@ export async function resetPasswordAction(input: {
   return run(async () => {
     const token = str(input?.token, "Reset token", 200);
     const password = parsePassword(input?.password);
+    await rateLimit("reset", { perIp: 20, minutes: 15 });
     const row = await db.passwordResetToken.findUnique({
       where: { tokenHash: hashToken(token) },
     });
@@ -158,6 +165,7 @@ export async function changePasswordAction(input: {
     const user = await requireUser();
     const current = typeof input?.currentPassword === "string" ? input.currentPassword : "";
     const next = parsePassword(input?.newPassword);
+    await rateLimit("change-password", { perIp: 20, perSubject: 8, subject: user.id, minutes: 15 });
     const row = await db.user.findUniqueOrThrow({ where: { id: user.id } });
     if (!(await verifyPassword(current, row.passwordHash))) {
       throw new ActionError("Your current password is incorrect.");
@@ -170,5 +178,39 @@ export async function changePasswordAction(input: {
     await db.session.deleteMany({ where: { userId: user.id } });
     await createSession(user.id);
     return null;
+  });
+}
+
+/** Confirms the address a verification link was sent to. Works signed in or out. */
+export async function verifyEmailAction(input: { token: string }): Promise<ActionResult<null>> {
+  return run(async () => {
+    const token = str(input?.token, "Verification token", 200);
+    await rateLimit("verify-email", { perIp: 30, minutes: 15 });
+    const row = await db.emailVerificationToken.findUnique({
+      where: { tokenHash: hashToken(token) },
+      include: { user: true },
+    });
+    // The link must be for the address the account uses right now.
+    if (!row || row.expiresAt < new Date() || row.user.deletedAt || row.user.email !== row.email) {
+      throw new ActionError(
+        "This verification link is invalid or has expired. Log in and request a new one.",
+      );
+    }
+    await db.$transaction([
+      db.user.update({ where: { id: row.userId }, data: { emailVerifiedAt: new Date() } }),
+      db.emailVerificationToken.deleteMany({ where: { userId: row.userId } }),
+    ]);
+    revalidateApp();
+    return null;
+  });
+}
+
+export async function resendVerificationAction(): Promise<ActionResult<{ email: string }>> {
+  return run(async () => {
+    const user = await requireUser();
+    if (user.emailVerified) throw new ActionError("Your email is already verified.");
+    await rateLimit("verify-resend", { perIp: 10, perSubject: 3, subject: user.id, minutes: 15 });
+    await sendVerificationEmail(user);
+    return { email: user.email };
   });
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  cancelInviteAction,
   changeRoleAction,
   inviteByEmailAction,
   leaveRoomAction,
@@ -29,7 +30,7 @@ import type { ActionResult } from "@/lib/action-result";
 import { computeBalances } from "@/lib/balances";
 import { TIMEZONES } from "@/lib/constants";
 import { formatNpr } from "@/lib/money";
-import type { Expense, Member, Room, RoomRole, Settlement } from "@/lib/types";
+import type { Expense, Member, Room, RoomInvite, RoomRole, Settlement } from "@/lib/types";
 import { cn, formatDate } from "@/lib/utils";
 import {
   Archive,
@@ -39,10 +40,12 @@ import {
   Copy,
   Crown,
   LogOut,
+  Mail,
   MoreVertical,
   Shield,
   UserMinus,
   UserPlus,
+  X,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -65,11 +68,14 @@ export function RoomDetail({
   currentUserId,
   expenses,
   settlements,
+  invites,
 }: {
   room: Room;
   currentUserId: string;
   expenses: Expense[];
   settlements: Settlement[];
+  /** Unanswered email invitations; empty for members who can't manage the room. */
+  invites: RoomInvite[];
 }) {
   const router = useRouter();
   const [copied, setCopied] = useState(false);
@@ -311,6 +317,46 @@ export function RoomDetail({
               </div>
             </CardContent>
           </Card>
+
+          {/* Pending invitations */}
+          {canManage && invites.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Pending invitations</CardTitle>
+                <CardDescription>Invited by email, waiting for them to accept.</CardDescription>
+              </CardHeader>
+              <CardContent className="divide-y divide-border pt-0">
+                {invites.map((invite) => (
+                  <div key={invite.id} className="flex items-center gap-3 py-2.5">
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary-soft text-primary">
+                      <Mail size={15} />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">{invite.email}</p>
+                      <p className="text-xs text-muted-foreground">
+                        expires {formatDate(invite.expiresAt)}
+                      </p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-muted-foreground hover:text-negative"
+                      disabled={pending}
+                      aria-label={`Cancel invitation for ${invite.email}`}
+                      onClick={() =>
+                        act(
+                          () => cancelInviteAction(invite.id),
+                          `Invitation for ${invite.email} cancelled.`,
+                        )
+                      }
+                    >
+                      <X />
+                    </Button>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
 
           {/* Room settings */}
           <Card>

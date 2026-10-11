@@ -14,7 +14,9 @@ import {
 import { db } from "@/lib/server/db";
 import { roomNets } from "@/lib/server/nets";
 import { verifyPassword } from "@/lib/server/password";
+import { rateLimit } from "@/lib/server/rate-limit";
 import { destroySession, requireUser } from "@/lib/server/session";
+import { sendVerificationEmail } from "@/lib/server/verify-email";
 
 export async function updateProfileAction(input: {
   name: string;
@@ -24,10 +26,17 @@ export async function updateProfileAction(input: {
     const user = await requireUser();
     const name = str(input?.name, "Full name", 80);
     const email = parseEmail(input?.email);
+    await rateLimit("profile", { perIp: 30, perSubject: 10, subject: user.id, minutes: 15 });
     if (email !== user.email && (await db.user.findUnique({ where: { email } }))) {
       throw new ActionError("Another account already uses that email.");
     }
-    await db.user.update({ where: { id: user.id }, data: { name, email } });
+    const emailChanged = email !== user.email;
+    await db.user.update({
+      where: { id: user.id },
+      // A new address has to be proven again before it can receive invitations.
+      data: { name, email, ...(emailChanged && { emailVerifiedAt: null }) },
+    });
+    if (emailChanged) await sendVerificationEmail({ id: user.id, name, email });
     revalidateApp();
     return null;
   });
@@ -111,6 +120,7 @@ export async function deleteAccountAction(input: {
       db.membership.updateMany({ where: { userId: user.id }, data: { active: false } }),
       db.invite.deleteMany({ where: { email: user.email } }),
       db.passwordResetToken.deleteMany({ where: { userId: user.id } }),
+      db.emailVerificationToken.deleteMany({ where: { userId: user.id } }),
       db.user.update({
         where: { id: user.id },
         data: {

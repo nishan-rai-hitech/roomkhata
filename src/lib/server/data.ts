@@ -6,13 +6,13 @@ import type {
   Expense,
   PendingInvite,
   Room,
+  RoomInvite,
   RoomRole,
   Settlement,
   SplitMethod,
-  User,
 } from "@/lib/types";
 import { db } from "./db";
-import { ROOM_COOKIE, requireUser } from "./session";
+import { ROOM_COOKIE, requireUser, type SessionUser } from "./session";
 
 /**
  * Data access layer. Every read here is scoped to the signed-in user: rooms are
@@ -82,7 +82,7 @@ function toSettlement(s: SettlementRow): Settlement {
 }
 
 export interface AppContext {
-  user: User;
+  user: SessionUser;
   /** Rooms the user is an active member of. */
   rooms: Room[];
   /** The selected room (cookie), falling back to the first non-archived one. */
@@ -159,6 +159,8 @@ export async function getExpenseForUser(
 
 export async function getPendingInvites(): Promise<PendingInvite[]> {
   const { user, rooms } = await getAppContext();
+  // Invitations are addressed to an email, so they only show once it's proven.
+  if (!user.emailVerified) return [];
   const invites = await db.invite.findMany({
     where: {
       email: user.email,
@@ -181,6 +183,15 @@ export async function getPendingInvites(): Promise<PendingInvite[]> {
     invitedByName: inviters.find((u) => u.id === i.invitedById)?.name ?? "A member",
     expiresAt: i.expiresAt.toISOString(),
   }));
+}
+
+/** Invitations to a room that are still waiting for an answer. Caller checks who may see them. */
+export async function getRoomInvites(roomId: string): Promise<RoomInvite[]> {
+  const invites = await db.invite.findMany({
+    where: { roomId, acceptedAt: null, expiresAt: { gt: new Date() } },
+    orderBy: { createdAt: "desc" },
+  });
+  return invites.map((i) => ({ id: i.id, email: i.email, expiresAt: i.expiresAt.toISOString() }));
 }
 
 export interface UserSettings {

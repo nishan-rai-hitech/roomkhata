@@ -43,6 +43,13 @@ export interface PendingInvite {
   expiresAt: string;
 }
 
+/** An invitation as the room's owner/admin sees it. */
+export interface RoomInvite {
+  id: Id;
+  email: string;
+  expiresAt: string;
+}
+
 export type SplitMethod = "equal" | "shares" | "exact" | "percent";
 
 export interface ExpenseShare {

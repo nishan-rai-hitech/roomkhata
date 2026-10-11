@@ -32,7 +32,24 @@ jobs:
           git pull --ff-only
           npm ci
           npx prisma generate
-          npx prisma db push
+
+          # Snapshot the database before touching its schema.
+          node scripts/backup-db.mjs
+
+          # A database created before migrations existed already has the 0_init
+          # tables, so the first deploy records that migration as applied.
+          npx prisma migrate deploy || {
+            npx prisma migrate resolve --applied 0_init
+            npx prisma migrate deploy
+          }
+
           npm run build
           pm2 restart roomkhata --update-env
+          # Remember the process list so `pm2 resurrect` / the startup service can restore it.
+          pm2 save
+
+          # Nightly backup at 20:15 UTC (02:00 in Nepal). Re-written on each deploy.
+          NODE_BIN="$(command -v node)"
+          CRON_LINE="15 20 * * * cd $HOME/roomkhata && $NODE_BIN scripts/backup-db.mjs >> $HOME/roomkhata-backups/backup.log 2>&1"
+          { crontab -l 2>/dev/null | grep -v 'scripts/backup-db.mjs' || true; echo "$CRON_LINE"; } | crontab -
           EOF
