@@ -6,19 +6,27 @@ import NepaliDate, { dateConfigMap } from "nepali-date-converter";
  */
 
 export const BS_MONTHS = [
-  "Baisakh",
-  "Jestha",
-  "Ashadh",
-  "Shrawan",
-  "Bhadra",
-  "Ashwin",
-  "Kartik",
-  "Mangsir",
-  "Poush",
-  "Magh",
-  "Falgun",
-  "Chaitra",
+  "बैशाख",
+  "जेठ",
+  "असार",
+  "साउन",
+  "भदौ",
+  "असोज",
+  "कार्तिक",
+  "मंसिर",
+  "पुष",
+  "माघ",
+  "फागुन",
+  "चैत",
 ] as const;
+
+/** Sunday first, as on a Nepali patro. */
+export const BS_WEEKDAYS = ["आइत", "सोम", "मंगल", "बुध", "बिही", "शुक्र", "शनि"] as const;
+
+/** 2083 → "२०८३" */
+export function nepaliDigits(value: number | string): string {
+  return String(value).replace(/\d/g,(d) => "०१२३४५६७८९"[Number(d)]);
+}
 
 // The range the conversion table covers (AD 1943-04-14 to 2034-04-13).
 export const BS_MIN_YEAR = 2000;

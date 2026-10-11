@@ -1,6 +1,6 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { BS_MONTHS, adToBs } from "./bs";
+import { BS_MONTHS, BS_WEEKDAYS, adToBs, nepaliDigits } from "./bs";
 
 /** className combiner — later Tailwind classes override earlier conflicting ones. */
 export function cn(...inputs: ClassValue[]): string {
@@ -19,7 +19,7 @@ export function initials(name: string): string {
 
 /**
  * Format a fixed ISO date string in the Bikram Sambat calendar, e.g.
- * "25 Ashwin 2083" (deterministic — no current-time use). Only `weekday` and
+ * "२५ असोज २०८३" (deterministic — no current-time use). Only `weekday` and
  * `year` in `opts` change the output; the day and month are always shown.
  */
 export function formatDate(
@@ -32,14 +32,13 @@ export function formatDate(
     : new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kathmandu" }).format(new Date(iso));
   const bs = adToBs(day);
   if (!bs) return new Date(iso).toLocaleDateString("en-GB", opts);
-  const weekday = opts.weekday
-    ? `${new Date(`${day}T00:00:00Z`).toLocaleDateString("en-GB", { weekday: opts.weekday, timeZone: "UTC" })}, `
-    : "";
-  return `${weekday}${bs.day} ${BS_MONTHS[bs.month - 1]}${opts.year ? ` ${bs.year}` : ""}`;
+  const weekday = opts.weekday ? `${BS_WEEKDAYS[new Date(`${day}T00:00:00Z`).getUTCDay()]}, ` : "";
+  const year = opts.year ? ` ${nepaliDigits(bs.year)}` : "";
+  return `${weekday}${nepaliDigits(bs.day)} ${BS_MONTHS[bs.month - 1]}${year}`;
 }
 
-/** BS month key (see `bsMonthKey`) → label: "2083-06" → "Ashwin 2083" */
+/** BS month key (see `bsMonthKey`) → label: "2083-06" → "असोज २०८३" */
 export function monthLabel(monthKey: string): string {
   const [year, month] = monthKey.split("-").map(Number);
-  return `${BS_MONTHS[month - 1] ?? ""} ${year}`.trim();
+  return `${BS_MONTHS[month - 1] ?? ""} ${nepaliDigits(year)}`.trim();
 }

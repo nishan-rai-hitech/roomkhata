@@ -3,19 +3,27 @@
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   BS_MAX_YEAR,
   BS_MIN_YEAR,
   BS_MONTHS,
+  BS_WEEKDAYS,
   adToBs,
   bsToAd,
   daysInBsMonth,
+  nepaliDigits,
   type BsDate,
 } from "@/lib/bs";
 import { cn, formatDate } from "@/lib/utils";
 import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 import { useState } from "react";
 
-const WEEKDAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 const YEARS = Array.from({ length: BS_MAX_YEAR - BS_MIN_YEAR + 1 }, (_, i) => BS_MIN_YEAR + i);
 
 function localToday(): string {
@@ -31,10 +39,20 @@ function addDays(iso: string, days: number): string {
   return date.toISOString().slice(0, 10);
 }
 
-const selectClass =
-  "h-8 rounded-md border border-input bg-transparent px-2 text-sm font-medium shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50";
+/** AD date parts of a YYYY-MM-DD string, in English. */
+function adLabel(iso: string, opts: Intl.DateTimeFormatOptions): string {
+  return new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-GB", { ...opts, timeZone: "UTC" });
+}
 
-/** One Bikram Sambat month as a grid; days are reported back as AD YYYY-MM-DD. */
+/** The AD months a BS month spans: "Sep/Oct 2026", or "Dec 2026/Jan 2027". */
+function adSpan(first: string, last: string): string {
+  const [m1, y1] = [adLabel(first, { month: "short" }), first.slice(0, 4)];
+  const [m2, y2] = [adLabel(last, { month: "short" }), last.slice(0, 4)];
+  if (y1 !== y2) return `${m1} ${y1}/${m2} ${y2}`;
+  return m1 === m2 ? `${m1} ${y1}` : `${m1}/${m2} ${y1}`;
+}
+
+/** One Bikram Sambat month laid out like a Nepali patro; days are reported as AD YYYY-MM-DD. */
 function BsCalendar({
   value,
   onSelect,
@@ -43,17 +61,18 @@ function BsCalendar({
   onSelect: (iso: string) => void;
 }) {
   const today = localToday();
+  const todayBs = adToBs(today);
   const [view, setView] = useState<Pick<BsDate, "year" | "month">>(() => {
-    const start = (value && adToBs(value)) || adToBs(today);
+    const start = (value && adToBs(value)) || todayBs;
     return start ? { year: start.year, month: start.month } : { year: BS_MIN_YEAR, month: 1 };
   });
 
+  const days = daysInBsMonth(view.year, view.month);
   const first = bsToAd({ ...view, day: 1 });
   const lead = first ? new Date(`${first}T00:00:00Z`).getUTCDay() : 0;
-  const weeks = Math.ceil((lead + daysInBsMonth(view.year, view.month)) / 7);
   // Whole weeks, padded with the neighbouring months' days.
   const cells = first
-    ? Array.from({ length: weeks * 7 }, (_, i) => {
+    ? Array.from({ length: Math.ceil((lead + days) / 7) * 7 }, (_, i) => {
         const iso = addDays(first, i - lead);
         return { iso, bs: adToBs(iso) };
       })
@@ -68,51 +87,57 @@ function BsCalendar({
   }
 
   return (
-    <div className="p-3">
-      <div className="mb-3 flex items-center justify-between gap-1">
+    <div className="w-[19rem] max-w-[calc(100vw-2rem)] p-3">
+      <div className="flex items-center gap-1">
         <Button
           type="button"
           variant="ghost"
           size="icon"
-          className="size-8"
-          aria-label="Previous month"
+          className="size-8 shrink-0"
+          aria-label="अघिल्लो महिना"
           disabled={atStart}
           onClick={() => step(-1)}
         >
           <ChevronLeft />
         </Button>
-        <div className="flex items-center gap-1.5">
-          <select
-            aria-label="Month"
-            className={selectClass}
-            value={view.month}
-            onChange={(e) => setView({ ...view, month: Number(e.target.value) })}
+        <div className="flex min-w-0 flex-1 items-center justify-center gap-1.5">
+          <Select
+            value={String(view.month)}
+            onValueChange={(month) => setView({ ...view, month: Number(month) })}
           >
-            {BS_MONTHS.map((label, i) => (
-              <option key={label} value={i + 1}>
-                {label}
-              </option>
-            ))}
-          </select>
-          <select
-            aria-label="Year"
-            className={selectClass}
-            value={view.year}
-            onChange={(e) => setView({ ...view, year: Number(e.target.value) })}
+            <SelectTrigger size="sm" className="gap-1 px-2.5 font-semibold" aria-label="महिना">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent position="popper" className="max-h-64">
+              {BS_MONTHS.map((label, i) => (
+                <SelectItem key={label} value={String(i + 1)}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={String(view.year)}
+            onValueChange={(year) => setView({ ...view, year: Number(year) })}
           >
-            {YEARS.map((year) => (
-              <option key={year} value={year}>
-                {year}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger size="sm" className="gap-1 px-2.5 font-semibold" aria-label="वर्ष">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent position="popper" className="max-h-64">
+              {YEARS.map((year) => (
+                <SelectItem key={year} value={String(year)}>
+                  {nepaliDigits(year)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <Button
           type="button"
           variant="ghost"
           size="icon"
-          className="size-8"
-          aria-label="Next month"
+          className="size-8 shrink-0"
+          aria-label="अर्को महिना"
           disabled={atEnd}
           onClick={() => step(1)}
         >
@@ -120,49 +145,76 @@ function BsCalendar({
         </Button>
       </div>
 
-      <div className="grid grid-cols-7 gap-y-1 text-center">
-        {WEEKDAYS.map((day) => (
-          <div key={day} className="py-1 text-[0.8rem] text-muted-foreground select-none">
+      <div className="mt-1.5 mb-2 flex items-center justify-between px-1 text-xs text-muted-foreground">
+        <span>{first ? adSpan(first, addDays(first, days - 1)) : ""}</span>
+        {todayBs && (
+          <button
+            type="button"
+            className="rounded-md px-2 py-0.5 font-medium text-primary outline-none hover:bg-primary-soft focus-visible:ring-[3px] focus-visible:ring-ring/50"
+            onClick={() => {
+              setView({ year: todayBs.year, month: todayBs.month });
+              onSelect(today);
+            }}
+          >
+            आज
+          </button>
+        )}
+      </div>
+
+      <div className="grid grid-cols-7 gap-0.5 text-center">
+        {BS_WEEKDAYS.map((day, i) => (
+          <div
+            key={day}
+            className={cn(
+              "pb-1 text-xs font-medium text-muted-foreground select-none",
+              i === 6 && "text-negative",
+            )}
+          >
             {day}
           </div>
         ))}
-        {cells.map(({ iso, bs }) =>
-          bs ? (
+        {cells.map(({ iso, bs }, i) => {
+          if (!bs) return <span key={iso} />;
+          const outside = bs.month !== view.month;
+          const selected = iso === value;
+          return (
             <button
               key={iso}
               type="button"
-              // The AD date, for anyone cross-checking against an English calendar.
-              title={new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-GB", {
-                day: "numeric",
-                month: "short",
-                year: "numeric",
-                timeZone: "UTC",
-              })}
-              aria-pressed={iso === value}
+              aria-label={`${formatDate(iso)} (${adLabel(iso, { day: "numeric", month: "short", year: "numeric" })})`}
+              aria-pressed={selected}
               onClick={() => onSelect(iso)}
               className={cn(
-                "mx-auto flex size-9 items-center justify-center rounded-md text-sm outline-none select-none hover:bg-accent hover:text-accent-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50",
-                bs.month !== view.month && "text-muted-foreground",
-                iso === today && "bg-accent text-accent-foreground",
-                iso === value &&
-                  "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground",
+                "relative flex aspect-square w-full items-center justify-center rounded-lg text-[15px] font-medium outline-none select-none hover:bg-accent focus-visible:ring-[3px] focus-visible:ring-ring/50",
+                // Saturday is the weekly holiday.
+                i % 7 === 6 && "text-negative",
+                outside && "opacity-40",
+                iso === today && !selected && "bg-primary-soft text-primary ring-1 ring-primary/40",
+                selected && "bg-primary text-primary-foreground hover:bg-primary",
               )}
             >
-              {bs.day}
+              {nepaliDigits(bs.day)}
+              {/* The AD day, as on a printed patro. */}
+              <span
+                className={cn(
+                  "absolute right-1 bottom-0.5 text-[9px] leading-none font-normal",
+                  selected ? "text-primary-foreground/80" : "text-muted-foreground",
+                )}
+              >
+                {Number(iso.slice(8))}
+              </span>
             </button>
-          ) : (
-            <span key={iso} />
-          ),
-        )}
+          );
+        })}
       </div>
     </div>
   );
 }
 
 /**
- * Bikram Sambat date picker. Values stay plain AD YYYY-MM-DD strings.
- * Controlled with `value`/`onChange`, or uncontrolled with `defaultValue` +
- * `name` in a form.
+ * Bikram Sambat (Nepali patro) date picker. Values stay plain AD YYYY-MM-DD
+ * strings. Controlled with `value`/`onChange`, or uncontrolled with
+ * `defaultValue` + `name` in a form.
  */
 export function DatePicker({
   id,
@@ -198,7 +250,12 @@ export function DatePicker({
           )}
         >
           <CalendarDays className="text-muted-foreground" />
-          {valid ? formatDate(current) : "Pick a date"}
+          {valid ? formatDate(current) : "मिति छान्नुहोस्"}
+          {valid && (
+            <span className="ml-auto text-xs text-muted-foreground">
+              {adLabel(current, { day: "numeric", month: "short", year: "numeric" })}
+            </span>
+          )}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="start">
