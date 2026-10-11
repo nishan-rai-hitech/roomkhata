@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { FormError } from "@/components/ui/form-error";
 import { Input, Label } from "@/components/ui/input";
 import Link from "next/link";
 import { registerAction } from "@/app/actions/auth";
@@ -48,14 +49,10 @@ export default function RegisterPage() {
   return (
     <div>
       <h2 className="text-2xl font-bold tracking-tight">Create your account</h2>
-      <p className="mt-1.5 text-sm text-muted">Start splitting fairly in minutes.</p>
+      <p className="mt-1.5 text-sm text-muted-foreground">Start splitting fairly in minutes.</p>
 
       <form onSubmit={onSubmit} className="mt-8 space-y-4" noValidate>
-        {error && (
-          <div className="rounded-lg bg-negative-soft px-3 py-2 text-sm text-negative">
-            {error}
-          </div>
-        )}
+        <FormError message={error} />
 
         <div>
           <Label htmlFor="name">Full name</Label>
@@ -96,21 +93,21 @@ export default function RegisterPage() {
                   />
                 ))}
               </div>
-              <span className="text-xs text-muted w-16 text-right">{strength.label}</span>
+              <span className="text-xs text-muted-foreground w-16 text-right">{strength.label}</span>
             </div>
           )}
         </div>
 
-        <Button type="submit" size="lg" className="w-full" disabled={loading}>
+        <Button type="submit" size="lg" className="w-full" loading={loading}>
           {loading ? "Creating account…" : "Create account"}
         </Button>
 
-        <p className="text-xs text-muted text-center leading-relaxed">
+        <p className="text-xs text-muted-foreground text-center leading-relaxed">
           By continuing you agree to RoomKhata&apos;s Terms and Privacy Policy.
         </p>
       </form>
 
-      <p className="mt-6 text-center text-sm text-muted">
+      <p className="mt-6 text-center text-sm text-muted-foreground">
         Already have an account?{" "}
         <Link href="/login" className="font-medium text-primary hover:underline">
           Log in

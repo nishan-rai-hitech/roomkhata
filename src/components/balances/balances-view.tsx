@@ -1,21 +1,26 @@
 "use client";
 
 import { recordSettlementAction } from "@/app/actions/expenses";
+import { CategoryIcon } from "@/components/expenses/category-icon";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { DatePicker } from "@/components/ui/date-picker";
+import { EmptyState } from "@/components/ui/empty-state";
+import { FormError } from "@/components/ui/form-error";
 import { Input, Label } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
-import { Select } from "@/components/ui/select";
+import { OptionSelect } from "@/components/ui/select";
 import { PageHeader } from "@/components/shell/page-header";
 import { computeBalances, suggestSettlements, type SettlementSuggestion } from "@/lib/balances";
 import { SETTLEMENT_METHODS } from "@/lib/constants";
 import { formatNpr, toPaisa, toRupees } from "@/lib/money";
 import type { Expense, Room, Settlement } from "@/lib/types";
-import { formatDate } from "@/lib/utils";
-import { ArrowRight, Check, HandCoins } from "lucide-react";
+import { cn, formatDate } from "@/lib/utils";
+import { ArrowRight, HandCoins, History, PartyPopper } from "lucide-react";
 import { useMemo, useState, useTransition } from "react";
+import { toast } from "sonner";
 
 export function BalancesView({
   room,
@@ -75,8 +80,14 @@ export function BalancesView({
     setError(null);
     startSave(async () => {
       const result = await recordSettlementAction(input);
-      if (result.ok) setOpen(false);
-      else setError(result.error);
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      setOpen(false);
+      toast.success("Payment recorded", {
+        description: `${firstName(input.fromUserId)} paid ${firstName(input.toUserId)} ${formatNpr(input.amount)}`,
+      });
     });
   }
 
@@ -85,6 +96,10 @@ export function BalancesView({
     .filter((b) => b.net !== 0 || members.find((m) => m.userId === b.userId)?.active)
     .sort((a, b) => b.net - a.net);
   const defaultTo = members.find((m) => m.userId !== currentUserId)?.userId;
+  const memberOptions = members.map((m) => ({
+    value: m.userId,
+    label: m.userId === currentUserId ? "You" : m.name,
+  }));
 
   return (
     <div>
@@ -94,7 +109,7 @@ export function BalancesView({
         actions={
           canRecord && (
             <Button onClick={() => openRecord()}>
-              <HandCoins size={16} /> Record a payment
+              <HandCoins /> Record a payment
             </Button>
           )
         }
@@ -102,17 +117,19 @@ export function BalancesView({
 
       {/* Your position */}
       <Card className="mb-5">
-        <CardContent className="flex flex-wrap items-center justify-between gap-4 p-6">
+        <CardContent className="flex flex-wrap items-center justify-between gap-6 p-6">
           <div>
-            <p className="text-sm text-muted">Your net balance</p>
+            <p className="text-sm text-muted-foreground">Your net balance</p>
             <p
-              className={`mt-1 text-3xl font-bold tabular ${
-                me.net > 0 ? "text-positive" : me.net < 0 ? "text-negative" : "text-foreground"
-              }`}
+              className={cn(
+                "mt-1 text-3xl font-bold tracking-tight tabular sm:text-4xl",
+                me.net > 0 && "text-positive",
+                me.net < 0 && "text-negative",
+              )}
             >
               {formatNpr(me.net, { sign: true })}
             </p>
-            <p className="mt-1 text-sm text-muted">
+            <p className="mt-1 text-sm text-muted-foreground">
               {me.net > 0
                 ? "Overall you are owed money."
                 : me.net < 0
@@ -120,7 +137,7 @@ export function BalancesView({
                   : "You're all settled up. 🎉"}
             </p>
           </div>
-          <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
             <Mini label="Paid (shared)" value={formatNpr(me.paid)} />
             <Mini label="Your share" value={formatNpr(me.assignedShare)} />
             <Mini label="Settled out" value={formatNpr(me.settlementsPaid)} />
@@ -129,7 +146,7 @@ export function BalancesView({
         </CardContent>
       </Card>
 
-      <div className="grid gap-5 lg:grid-cols-[1fr_1fr]">
+      <div className="grid gap-5 lg:grid-cols-2">
         {/* Everyone's balances */}
         <Card>
           <CardHeader>
@@ -143,7 +160,7 @@ export function BalancesView({
                   <p className="truncate text-sm font-medium">
                     {b.userId === currentUserId ? "You" : nameOf(b.userId)}
                   </p>
-                  <p className="text-xs text-muted">
+                  <p className="text-xs text-muted-foreground">
                     {b.net > 0 ? "is owed" : b.net < 0 ? "owes" : "settled up"}
                   </p>
                 </div>
@@ -155,15 +172,20 @@ export function BalancesView({
                   </Badge>
                 )}
                 <span
-                  className={`w-28 text-right text-sm font-semibold tabular ${
-                    b.net > 0 ? "text-positive" : b.net < 0 ? "text-negative" : "text-muted"
-                  }`}
+                  className={cn(
+                    "w-28 text-right text-sm font-semibold tabular",
+                    b.net > 0
+                      ? "text-positive"
+                      : b.net < 0
+                        ? "text-negative"
+                        : "text-muted-foreground",
+                  )}
                 >
                   {formatNpr(b.net, { sign: true })}
                 </span>
               </div>
             ))}
-            <p className="pt-3 text-center text-[11px] text-muted">
+            <p className="pt-3 text-center text-[11px] text-muted-foreground">
               All balances always net to exactly {formatNpr(balances.reduce((a, b) => a + b.net, 0))}.
             </p>
           </CardContent>
@@ -173,22 +195,28 @@ export function BalancesView({
         <Card>
           <CardHeader>
             <CardTitle>Simplest way to settle up</CardTitle>
+            <CardDescription>
+              Fewest transfers possible. Nothing changes until you record a payment.
+            </CardDescription>
           </CardHeader>
           <CardContent>
             {suggestions.length === 0 ? (
-              <p className="py-10 text-center text-sm text-muted">
-                Everyone&apos;s square. No payments needed. 🎉
-              </p>
+              <EmptyState
+                className="py-8"
+                icon={<PartyPopper />}
+                title="Everyone's square"
+                description="No payments needed."
+              />
             ) : (
               <ul className="space-y-2">
                 {suggestions.map((s, i) => (
                   <li
                     key={i}
-                    className="flex items-center gap-2 rounded-lg border border-border p-3"
+                    className="flex flex-wrap items-center gap-2 rounded-xl border border-border p-3"
                   >
                     <Avatar name={nameOf(s.fromUserId)} color={colorOf(s.fromUserId)} size="sm" />
                     <span className="text-sm font-medium">{firstName(s.fromUserId)}</span>
-                    <ArrowRight size={16} className="text-muted" />
+                    <ArrowRight size={16} className="text-muted-foreground" />
                     <Avatar name={nameOf(s.toUserId)} color={colorOf(s.toUserId)} size="sm" />
                     <span className="text-sm font-medium">{firstName(s.toUserId)}</span>
                     <span className="ml-auto text-sm font-semibold tabular">
@@ -203,10 +231,6 @@ export function BalancesView({
                 ))}
               </ul>
             )}
-            <p className="mt-3 text-[11px] text-muted">
-              Suggestions minimize the number of transfers. Nothing changes until you record a
-              payment.
-            </p>
           </CardContent>
         </Card>
       </div>
@@ -218,18 +242,21 @@ export function BalancesView({
         </CardHeader>
         <CardContent className="divide-y divide-border">
           {settlements.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted">No settlements recorded yet.</p>
+            <EmptyState
+              className="py-8"
+              icon={<History />}
+              title="No settlements yet"
+              description="Payments between members will show up here."
+            />
           ) : (
             settlements.map((s) => (
               <div key={s.id} className="flex items-center gap-3 py-3">
-                <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-positive-soft text-positive">
-                  <Check size={16} />
-                </span>
+                <CategoryIcon category="settlement" />
                 <div className="min-w-0 flex-1 text-sm">
                   <p className="font-medium">
                     {firstName(s.fromUserId)} paid {firstName(s.toUserId)}
                   </p>
-                  <p className="text-xs text-muted capitalize">
+                  <p className="text-xs text-muted-foreground capitalize">
                     {s.method} · {formatDate(s.date)}
                     {s.note ? ` · ${s.note}` : ""}
                   </p>
@@ -249,31 +276,25 @@ export function BalancesView({
         description="Log a payment one member made to another. This updates balances."
       >
         <form onSubmit={recordSettlement} className="space-y-4">
-          {error && (
-            <div className="rounded-lg bg-negative-soft px-3 py-2 text-sm text-negative">
-              {error}
-            </div>
-          )}
+          <FormError message={error} />
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label htmlFor="from">From (payer)</Label>
-              <Select id="from" name="from" defaultValue={prefill?.fromUserId ?? currentUserId}>
-                {members.map((m) => (
-                  <option key={m.userId} value={m.userId}>
-                    {m.userId === currentUserId ? "You" : m.name}
-                  </option>
-                ))}
-              </Select>
+              <OptionSelect
+                id="from"
+                name="from"
+                defaultValue={prefill?.fromUserId ?? currentUserId}
+                options={memberOptions}
+              />
             </div>
             <div>
               <Label htmlFor="to">To (receiver)</Label>
-              <Select id="to" name="to" defaultValue={prefill?.toUserId ?? defaultTo}>
-                {members.map((m) => (
-                  <option key={m.userId} value={m.userId}>
-                    {m.userId === currentUserId ? "You" : m.name}
-                  </option>
-                ))}
-              </Select>
+              <OptionSelect
+                id="to"
+                name="to"
+                defaultValue={prefill?.toUserId ?? defaultTo}
+                options={memberOptions}
+              />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -290,19 +311,22 @@ export function BalancesView({
             </div>
             <div>
               <Label htmlFor="date">Date</Label>
-              <Input id="date" name="date" type="date" defaultValue={today} />
+              <DatePicker id="date" name="date" defaultValue={today} />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label htmlFor="method">Method</Label>
-              <Select id="method" name="method" defaultValue="cash">
-                {SETTLEMENT_METHODS.map((m) => (
-                  <option key={m} value={m} className="capitalize">
-                    {m}
-                  </option>
-                ))}
-              </Select>
+              <OptionSelect
+                id="method"
+                name="method"
+                defaultValue="cash"
+                className="capitalize"
+                options={SETTLEMENT_METHODS.map((m) => ({
+                  value: m,
+                  label: <span className="capitalize">{m}</span>,
+                }))}
+              />
             </div>
             <div>
               <Label htmlFor="note">Note (optional)</Label>
@@ -313,8 +337,8 @@ export function BalancesView({
             <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={saving}>
-              {saving ? "Recording…" : "Record payment"}
+            <Button type="submit" loading={saving}>
+              Record payment
             </Button>
           </div>
         </form>
@@ -325,9 +349,9 @@ export function BalancesView({
 
 function Mini({ label, value }: { label: string; value: string }) {
   return (
-    <div>
-      <p className="text-muted">{label}</p>
-      <p className="font-semibold tabular">{value}</p>
+    <div className="rounded-xl bg-muted/60 px-3 py-2.5">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="mt-0.5 font-semibold tabular">{value}</p>
     </div>
   );
 }

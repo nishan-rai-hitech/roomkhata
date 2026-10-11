@@ -1,113 +1,156 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 
-/* ───────────────────────── Design tokens ───────────────────────── */
+/* The theme lives on <html data-theme>, set before paint by the script in the root layout. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/* ───────────────────────── Design tokens (shadcn/ui names) ───────────────────────── */
 :root {
-  /* Surfaces — clean & minimal: near-white, hairline borders */
-  --background: #fbfbfa;
-  --surface: #ffffff;
-  --surface-2: #f5f6f5;
-  --foreground: #18181b;
-  --muted: #71717a;
-  --border: #ececec;
-  --border-strong: #dcdcdc;
+  /* Surfaces — warm paper with a hint of green */
+  --background: #f5f7f3;
+  --foreground: #13201a;
+  --card: #ffffff;
+  --card-foreground: #13201a;
+  --popover: #ffffff;
+  --popover-foreground: #13201a;
 
   /* Brand — emerald */
-  --primary: #059669;
-  --primary-hover: #047857;
-  --primary-fg: #ffffff;
-  --primary-soft: #ecfdf5;
+  --primary: #047857;
+  --primary-foreground: #ffffff;
+  --primary-soft: #e3f5ec;
+
+  --secondary: #ecf0ea;
+  --secondary-foreground: #13201a;
+  --muted: #eff2ed;
+  --muted-foreground: #63716a;
+  --accent: #e6f2eb;
+  --accent-foreground: #0b3b2b;
+  --destructive: #dc2626;
+
+  --border: #e2e7e0;
+  --input: #d2d9d0;
+  --ring: #10b981;
 
   /* Semantic money colors */
-  --positive: #059669;   /* you are owed / credit */
-  --positive-soft: #ecfdf5;
-  --negative: #dc2626;   /* you owe / debit */
-  --negative-soft: #fef2f2;
-  --warning: #d97706;
-  --warning-soft: #fffbeb;
+  --positive: #047857; /* you are owed / credit */
+  --positive-soft: #e3f5ec;
+  --negative: #dc2626; /* you owe / debit */
+  --negative-soft: #fdeeee;
+  --warning: #b45309;
+  --warning-soft: #fff5e0;
 
-  --ring: rgba(5, 150, 105, 0.3);
-  --radius: 0.625rem;
-}
+  /* Sidebar — deep forest in both themes */
+  --sidebar: #0b2a20;
+  --sidebar-foreground: #dcebe3;
+  --sidebar-muted: #8cae9f;
+  --sidebar-accent: #164132;
+  --sidebar-border: #1a4535;
+  --sidebar-primary: #34d399;
 
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --background: #0a0b0a;
-    --surface: #141615;
-    --surface-2: #1c1f1d;
-    --foreground: #e8eae8;
-    --muted: #9aa09c;
-    --border: #262927;
-    --border-strong: #353a37;
-
-    --primary: #34d399;
-    --primary-hover: #6ee7b7;
-    --primary-fg: #06251a;
-    --primary-soft: #0f2a20;
-
-    --positive: #34d399;
-    --positive-soft: #0f2a20;
-    --negative: #f87171;
-    --negative-soft: #2a1515;
-    --warning: #fbbf24;
-    --warning-soft: #2a2010;
-
-    --ring: rgba(52, 211, 153, 0.4);
-  }
+  --radius: 0.75rem;
 }
 
 :root[data-theme="dark"] {
-  --background: #0a0b0a;
-  --surface: #141615;
-  --surface-2: #1c1f1d;
-  --foreground: #e8eae8;
-  --muted: #9aa09c;
-  --border: #262927;
-  --border-strong: #353a37;
+  --background: #090e0c;
+  --foreground: #e6ece8;
+  --card: #111814;
+  --card-foreground: #e6ece8;
+  --popover: #141c18;
+  --popover-foreground: #e6ece8;
+
   --primary: #34d399;
-  --primary-hover: #6ee7b7;
-  --primary-fg: #06251a;
-  --primary-soft: #0f2a20;
+  --primary-foreground: #052e1f;
+  --primary-soft: #10291f;
+
+  --secondary: #1a231e;
+  --secondary-foreground: #e6ece8;
+  --muted: #18211c;
+  --muted-foreground: #93a39a;
+  --accent: #1a2b22;
+  --accent-foreground: #d9f5e8;
+  --destructive: #ef4444;
+
+  --border: #212e27;
+  --input: #2c3b33;
+  --ring: #34d399;
+
   --positive: #34d399;
-  --positive-soft: #0f2a20;
+  --positive-soft: #10291f;
   --negative: #f87171;
-  --negative-soft: #2a1515;
+  --negative-soft: #2b1516;
   --warning: #fbbf24;
   --warning-soft: #2a2010;
-  --ring: rgba(52, 211, 153, 0.4);
+
+  --sidebar: #07120e;
+  --sidebar-foreground: #d3e2da;
+  --sidebar-muted: #7f9b8e;
+  --sidebar-accent: #12281f;
+  --sidebar-border: #15251e;
+  --sidebar-primary: #34d399;
 }
 
 @theme inline {
   --color-background: var(--background);
-  --color-surface: var(--surface);
-  --color-surface-2: var(--surface-2);
   --color-foreground: var(--foreground);
-  --color-muted: var(--muted);
-  --color-border: var(--border);
-  --color-border-strong: var(--border-strong);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
-  --color-primary-hover: var(--primary-hover);
-  --color-primary-fg: var(--primary-fg);
+  --color-primary-foreground: var(--primary-foreground);
   --color-primary-soft: var(--primary-soft);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
   --color-positive: var(--positive);
   --color-positive-soft: var(--positive-soft);
   --color-negative: var(--negative);
   --color-negative-soft: var(--negative-soft);
   --color-warning: var(--warning);
   --color-warning-soft: var(--warning-soft);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-muted: var(--sidebar-muted);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-primary: var(--sidebar-primary);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
 }
 
-* {
-  border-color: var(--border);
-}
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-sans), system-ui, sans-serif;
-  -webkit-font-smoothing: antialiased;
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-sans), system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    /* A soft emerald glow in the top corner keeps the canvas from feeling flat. */
+    background-image: radial-gradient(
+      70rem 34rem at 100% -12%,
+      color-mix(in oklab, var(--primary) 9%, transparent),
+      transparent 70%
+    );
+    background-attachment: fixed;
+  }
+
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
 }
 
 /* Numbers align nicely in ledgers */
@@ -116,5 +159,14 @@ body {
 }
 
 ::selection {
-  background: var(--primary-soft);
+  background: color-mix(in oklab, var(--primary) 22%, transparent);
+}
+
+@media print {
+  body {
+    background: #fff;
+  }
+  .no-print {
+    display: none !important;
+  }
 }

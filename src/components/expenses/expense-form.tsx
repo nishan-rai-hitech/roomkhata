@@ -1,12 +1,17 @@
 "use client";
 
+import { createExpenseAction, updateExpenseAction } from "@/app/actions/expenses";
+import { CategoryIcon } from "@/components/expenses/category-icon";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { DatePicker } from "@/components/ui/date-picker";
+import { FormError } from "@/components/ui/form-error";
 import { Input, Label } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
+import { OptionSelect } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { PageHeader } from "@/components/shell/page-header";
-import { createExpenseAction, updateExpenseAction } from "@/app/actions/expenses";
 import { CATEGORIES, SPLIT_METHODS } from "@/lib/constants";
 import {
   formatNpr,
@@ -18,10 +23,11 @@ import {
 } from "@/lib/money";
 import type { Expense, Member, SplitMethod } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { AlertCircle, Check } from "lucide-react";
+import { CircleAlert, CircleCheck } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
+import { toast } from "sonner";
 
 const gcd = (a: number, b: number): number => (b === 0 ? a : gcd(b, a % b));
 
@@ -49,6 +55,7 @@ export function ExpenseForm({
   );
   const [category, setCategory] = useState(initial?.category ?? "Groceries");
   const [date, setDate] = useState(initial?.date ?? today);
+  const [note, setNote] = useState(initial?.note ?? "");
   const [payerId, setPayerId] = useState(
     initial?.payerId ??
       (members.some((m) => m.userId === currentUserId) ? currentUserId : members[0]?.userId ?? ""),
@@ -95,9 +102,13 @@ export function ExpenseForm({
   const total: Paisa = toPaisa(amountStr || "0");
 
   // Participants actually included (personal = payer only).
-  const includedIds = isPersonal
-    ? [payerId]
-    : members.filter((m) => participants.has(m.userId)).map((m) => m.userId);
+  const includedIds = useMemo(
+    () =>
+      isPersonal
+        ? [payerId]
+        : members.filter((m) => participants.has(m.userId)).map((m) => m.userId),
+    [isPersonal, payerId, members, participants],
+  );
 
   // Compute each participant's share (integer paisa) by method.
   const { shares, assigned, methodError } = useMemo(() => {
@@ -139,6 +150,7 @@ export function ExpenseForm({
   const balanced = total > 0 && remaining === 0 && !methodError;
   const canSave =
     title.trim().length > 0 && total > 0 && includedIds.length > 0 && balanced;
+  const backHref = initial ? `/expenses/${initial.id}` : "/expenses";
 
   function toggleParticipant(id: string) {
     setParticipants((prev) => {
@@ -161,7 +173,7 @@ export function ExpenseForm({
       isPersonal,
       splitMethod: method,
       shares: includedIds.map((id) => ({ userId: id, amount: shares[id] ?? 0 })),
-      note: initial?.note,
+      note: note.trim() || undefined,
     };
     setError(null);
     startSave(async () => {
@@ -172,7 +184,10 @@ export function ExpenseForm({
         setError(result.error);
         return;
       }
-      router.push(initial ? `/expenses/${initial.id}` : "/expenses");
+      toast.success(initial ? "Expense updated" : "Expense added", {
+        description: `${title.trim()} · ${formatNpr(total)}`,
+      });
+      router.push(backHref);
     });
   }
 
@@ -182,11 +197,9 @@ export function ExpenseForm({
         title={editing ? "Edit expense" : "Add expense"}
         subtitle={roomName}
         actions={
-          <Link href={initial ? `/expenses/${initial.id}` : "/expenses"}>
-            <Button type="button" variant="ghost">
-              Cancel
-            </Button>
-          </Link>
+          <Button asChild type="button" variant="ghost">
+            <Link href={backHref}>Cancel</Link>
+          </Button>
         }
       />
 
@@ -196,6 +209,7 @@ export function ExpenseForm({
           <Card>
             <CardHeader>
               <CardTitle>Details</CardTitle>
+              <CardDescription>What was bought, how much, and who paid.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
@@ -205,72 +219,83 @@ export function ExpenseForm({
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="e.g. Groceries – Bhatbhateni"
+                  maxLength={120}
                   autoFocus
                 />
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <Label htmlFor="amount">Amount (Rs)</Label>
-                  <Input
-                    id="amount"
-                    inputMode="decimal"
-                    value={amountStr}
-                    onChange={(e) => setAmountStr(e.target.value.replace(/[^0-9.]/g, ""))}
-                    placeholder="0.00"
-                    className="tabular"
-                  />
+                  <div className="relative">
+                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium text-muted-foreground">
+                      Rs
+                    </span>
+                    <Input
+                      id="amount"
+                      inputMode="decimal"
+                      value={amountStr}
+                      onChange={(e) => setAmountStr(e.target.value.replace(/[^0-9.]/g, ""))}
+                      placeholder="0.00"
+                      className="pl-10 text-base font-semibold tabular"
+                    />
+                  </div>
                 </div>
                 <div>
                   <Label htmlFor="date">Date</Label>
-                  <Input
-                    id="date"
-                    type="date"
-                    value={date}
-                    onChange={(e) => setDate(e.target.value)}
-                  />
+                  <DatePicker id="date" value={date} onChange={setDate} />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <Label htmlFor="category">Category</Label>
-                  <Select
+                  <OptionSelect
                     id="category"
                     value={category}
-                    onChange={(e) => setCategory(e.target.value as typeof category)}
-                  >
-                    {CATEGORIES.map((c) => (
-                      <option key={c} value={c}>
-                        {c}
-                      </option>
-                    ))}
-                  </Select>
+                    onValueChange={setCategory}
+                    options={CATEGORIES.map((c) => ({
+                      value: c,
+                      label: (
+                        <>
+                          <CategoryIcon category={c} className="size-5 rounded-md [&_svg]:size-3" />
+                          {c}
+                        </>
+                      ),
+                    }))}
+                  />
                 </div>
                 <div>
                   <Label htmlFor="payer">Paid by</Label>
-                  <Select id="payer" value={payerId} onChange={(e) => setPayerId(e.target.value)}>
-                    {members.map((m) => (
-                      <option key={m.userId} value={m.userId}>
-                        {m.userId === currentUserId ? "You" : m.name}
-                      </option>
-                    ))}
-                  </Select>
+                  <OptionSelect
+                    id="payer"
+                    value={payerId}
+                    onValueChange={setPayerId}
+                    options={members.map((m) => ({
+                      value: m.userId,
+                      label: m.userId === currentUserId ? "You" : m.name,
+                    }))}
+                  />
                 </div>
               </div>
-
-              <label className="flex items-center gap-3 rounded-lg border border-border bg-surface-2 px-3 py-2.5">
-                <input
-                  type="checkbox"
-                  checked={isPersonal}
-                  onChange={(e) => setIsPersonal(e.target.checked)}
-                  className="h-4 w-4 accent-[var(--primary)]"
+              <div>
+                <Label htmlFor="note">Note (optional)</Label>
+                <Input
+                  id="note"
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  placeholder="Anything worth remembering"
+                  maxLength={500}
                 />
-                <span className="text-sm">
+              </div>
+
+              <div className="flex items-center justify-between gap-4 rounded-xl border border-border bg-muted/60 px-4 py-3">
+                <label htmlFor="personal" className="cursor-pointer text-sm">
                   <span className="font-medium">Personal expense</span>
-                  <span className="block text-xs text-muted">
+                  <span className="block text-xs text-muted-foreground">
                     Only the payer is charged — never affects shared balances.
                   </span>
-                </span>
-              </label>
+                </label>
+                <Switch id="personal" checked={isPersonal} onCheckedChange={setIsPersonal} />
+              </div>
             </CardContent>
           </Card>
 
@@ -279,28 +304,34 @@ export function ExpenseForm({
             <Card>
               <CardHeader>
                 <CardTitle>How to split</CardTitle>
+                <CardDescription>
+                  {SPLIT_METHODS.find((m) => m.value === method)?.hint}
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                <div
+                  role="radiogroup"
+                  aria-label="Split method"
+                  className="grid grid-cols-2 gap-1 rounded-xl bg-muted p-1 sm:grid-cols-4"
+                >
                   {SPLIT_METHODS.map((m) => (
                     <button
                       key={m.value}
                       type="button"
+                      role="radio"
+                      aria-checked={method === m.value}
                       onClick={() => setMethod(m.value)}
                       className={cn(
-                        "rounded-lg border px-3 py-2 text-sm font-medium transition-colors",
+                        "rounded-lg px-3 py-2 text-sm font-medium transition-all",
                         method === m.value
-                          ? "border-primary bg-primary-soft text-primary"
-                          : "border-border text-muted hover:bg-surface-2",
+                          ? "bg-card text-primary shadow-sm"
+                          : "text-muted-foreground hover:text-foreground",
                       )}
                     >
                       {m.label}
                     </button>
                   ))}
                 </div>
-                <p className="text-xs text-muted">
-                  {SPLIT_METHODS.find((m) => m.value === method)?.hint}
-                </p>
 
                 <div className="divide-y divide-border">
                   {members.map((m) => {
@@ -308,15 +339,18 @@ export function ExpenseForm({
                     const share = shares[m.userId] ?? 0;
                     return (
                       <div key={m.userId} className="flex items-center gap-3 py-2.5">
-                        <input
-                          type="checkbox"
+                        <Checkbox
                           checked={included}
-                          onChange={() => toggleParticipant(m.userId)}
-                          className="h-4 w-4 accent-[var(--primary)]"
+                          onCheckedChange={() => toggleParticipant(m.userId)}
                           aria-label={`Include ${m.name}`}
                         />
                         <Avatar name={m.name} color={m.avatarColor} size="sm" />
-                        <span className="flex-1 truncate text-sm">
+                        <span
+                          className={cn(
+                            "flex-1 truncate text-sm",
+                            !included && "text-muted-foreground line-through",
+                          )}
+                        >
                           {m.userId === currentUserId ? "You" : m.name}
                         </span>
 
@@ -328,6 +362,7 @@ export function ExpenseForm({
                             }
                             className="h-8 w-16 text-center tabular"
                             inputMode="numeric"
+                            aria-label={`Shares for ${m.name}`}
                           />
                         )}
                         {included && method === "percent" && (
@@ -340,8 +375,9 @@ export function ExpenseForm({
                               className="h-8 w-16 text-center tabular"
                               inputMode="decimal"
                               placeholder="0"
+                              aria-label={`Percent for ${m.name}`}
                             />
-                            <span className="text-xs text-muted">%</span>
+                            <span className="text-xs text-muted-foreground">%</span>
                           </div>
                         )}
                         {included && method === "exact" && (
@@ -353,13 +389,14 @@ export function ExpenseForm({
                             className="h-8 w-24 text-center tabular"
                             inputMode="decimal"
                             placeholder="0.00"
+                            aria-label={`Amount for ${m.name}`}
                           />
                         )}
 
                         <span
                           className={cn(
                             "w-24 text-right text-sm font-semibold tabular",
-                            included ? "text-foreground" : "text-muted/50",
+                            included ? "text-foreground" : "text-muted-foreground/50",
                           )}
                         >
                           {included ? formatNpr(share) : "—"}
@@ -390,29 +427,33 @@ export function ExpenseForm({
               />
 
               {methodError ? (
-                <Banner tone="bad" icon={<AlertCircle size={16} />}>{methodError}</Banner>
+                <Banner tone="bad">{methodError}</Banner>
               ) : balanced ? (
-                <Banner tone="ok" icon={<Check size={16} />}>
-                  Shares add up to the total exactly.
-                </Banner>
+                <Banner tone="ok">Shares add up to the total exactly.</Banner>
               ) : total > 0 ? (
-                <Banner tone="bad" icon={<AlertCircle size={16} />}>
-                  {remaining > 0
-                    ? `${formatNpr(remaining)} still unassigned.`
-                    : `${formatNpr(-remaining)} over the total.`}
+                <Banner tone="bad">
+                  {includedIds.length === 0
+                    ? "Select at least one person to split with."
+                    : remaining > 0
+                      ? `${formatNpr(remaining)} still unassigned.`
+                      : `${formatNpr(-remaining)} over the total.`}
                 </Banner>
               ) : (
-                <p className="text-xs text-muted">Enter an amount to see the split.</p>
+                <p className="text-xs text-muted-foreground">Enter an amount to see the split.</p>
               )}
 
-              {error && (
-                <Banner tone="bad" icon={<AlertCircle size={16} />}>{error}</Banner>
-              )}
+              <FormError message={error} />
 
-              <Button type="submit" size="lg" className="w-full" disabled={!canSave || saving}>
-                {saving ? "Saving…" : editing ? "Save changes" : "Add expense"}
+              <Button
+                type="submit"
+                size="lg"
+                className="w-full"
+                disabled={!canSave}
+                loading={saving}
+              >
+                {editing ? "Save changes" : "Add expense"}
               </Button>
-              <p className="text-center text-[11px] text-muted">
+              <p className="text-center text-[11px] text-muted-foreground">
                 Amounts are stored as exact paisa — no rounding drift.
               </p>
             </CardContent>
@@ -437,21 +478,13 @@ function Row({
   const color = tone === "ok" ? "text-positive" : tone === "bad" ? "text-negative" : "";
   return (
     <div className="flex items-center justify-between text-sm">
-      <span className="text-muted">{label}</span>
-      <span className={cn("tabular font-semibold", strong && "text-base", color)}>{value}</span>
+      <span className="text-muted-foreground">{label}</span>
+      <span className={cn("tabular font-semibold", strong && "text-lg", color)}>{value}</span>
     </div>
   );
 }
 
-function Banner({
-  tone,
-  icon,
-  children,
-}: {
-  tone: "ok" | "bad";
-  icon: React.ReactNode;
-  children: React.ReactNode;
-}) {
+function Banner({ tone, children }: { tone: "ok" | "bad"; children: React.ReactNode }) {
   return (
     <div
       className={cn(
@@ -459,7 +492,7 @@ function Banner({
         tone === "ok" ? "bg-positive-soft text-positive" : "bg-negative-soft text-negative",
       )}
     >
-      {icon}
+      {tone === "ok" ? <CircleCheck size={16} /> : <CircleAlert size={16} />}
       {children}
     </div>
   );

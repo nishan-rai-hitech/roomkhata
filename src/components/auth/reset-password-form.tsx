@@ -2,7 +2,9 @@
 
 import { resetPasswordAction } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
+import { FormError } from "@/components/ui/form-error";
 import { Input, Label } from "@/components/ui/input";
+import { CircleCheck } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -16,11 +18,11 @@ export function ResetPasswordForm() {
   if (done) {
     return (
       <div className="text-center">
-        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-positive-soft text-positive text-xl">
-          ✓
+        <div className="mx-auto mb-4 flex size-14 items-center justify-center rounded-2xl bg-positive-soft text-positive">
+          <CircleCheck size={28} />
         </div>
         <h2 className="text-2xl font-bold tracking-tight">Password updated</h2>
-        <p className="mt-2 text-sm text-muted">
+        <p className="mt-2 text-sm text-muted-foreground">
           You&apos;ve been signed out everywhere. Log in with your new password.
         </p>
         <Link
@@ -52,19 +54,11 @@ export function ResetPasswordForm() {
   return (
     <div>
       <h2 className="text-2xl font-bold tracking-tight">Choose a new password</h2>
-      <p className="mt-1.5 text-sm text-muted">Use at least 8 characters.</p>
+      <p className="mt-1.5 text-sm text-muted-foreground">Use at least 8 characters.</p>
 
       <form onSubmit={onSubmit} className="mt-8 space-y-4" noValidate>
-        {!token && (
-          <div className="rounded-lg bg-negative-soft px-3 py-2 text-sm text-negative">
-            This reset link is missing its token. Request a new one.
-          </div>
-        )}
-        {error && (
-          <div className="rounded-lg bg-negative-soft px-3 py-2 text-sm text-negative">
-            {error}
-          </div>
-        )}
+        <FormError message={!token ? "This reset link is missing its token. Request a new one." : null} />
+        <FormError message={error} />
         <div>
           <Label htmlFor="password">New password</Label>
           <Input
@@ -79,12 +73,12 @@ export function ResetPasswordForm() {
           <Label htmlFor="confirm">Confirm password</Label>
           <Input id="confirm" name="confirm" type="password" autoComplete="new-password" />
         </div>
-        <Button type="submit" size="lg" className="w-full" disabled={loading || !token}>
+        <Button type="submit" size="lg" className="w-full" loading={loading} disabled={!token}>
           {loading ? "Saving…" : "Set new password"}
         </Button>
       </form>
 
-      <p className="mt-6 text-center text-sm text-muted">
+      <p className="mt-6 text-center text-sm text-muted-foreground">
         <Link href="/forgot-password" className="font-medium text-primary hover:underline">
           Request a new link
         </Link>

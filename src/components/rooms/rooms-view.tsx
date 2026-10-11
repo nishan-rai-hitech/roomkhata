@@ -5,17 +5,20 @@ import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { FormError } from "@/components/ui/form-error";
 import { Input, Label } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
-import { Select } from "@/components/ui/select";
+import { OptionSelect } from "@/components/ui/select";
 import { PageHeader } from "@/components/shell/page-header";
 import { TIMEZONES } from "@/lib/constants";
 import { formatNpr } from "@/lib/money";
 import type { PendingInvite, Room } from "@/lib/types";
-import { formatDate } from "@/lib/utils";
-import { DoorOpen, Plus, Users } from "lucide-react";
+import { cn, formatDate } from "@/lib/utils";
+import { DoorOpen, Home, Mail, Plus, Users } from "lucide-react";
 import Link from "next/link";
 import { useState, useTransition } from "react";
+import { toast } from "sonner";
 
 export function RoomsView({
   rooms,
@@ -29,7 +32,6 @@ export function RoomsView({
 }) {
   const [createOpen, setCreateOpen] = useState(false);
   const [joinOpen, setJoinOpen] = useState(false);
-  const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startAction] = useTransition();
 
@@ -59,9 +61,10 @@ export function RoomsView({
         return;
       }
       setCreateOpen(false);
-      setNotice(
-        `Room “${result.data.name}” created. Share code ${result.data.inviteCode} to invite flatmates.`,
-      );
+      toast.success(`Room “${result.data.name}” created`, {
+        description: `Share code ${result.data.inviteCode} to invite flatmates.`,
+        duration: 10000,
+      });
     });
   }
 
@@ -76,20 +79,16 @@ export function RoomsView({
         return;
       }
       setJoinOpen(false);
-      setNotice(`You joined “${result.data.name}”.`);
+      toast.success(`You joined “${result.data.name}”`);
     });
   }
 
   function respond(invite: PendingInvite, accept: boolean) {
     startAction(async () => {
       const result = await respondToInviteAction(invite.id, accept);
-      setNotice(
-        result.ok
-          ? accept
-            ? `You joined “${result.data.roomName}”.`
-            : `Invitation to “${result.data.roomName}” declined.`
-          : result.error,
-      );
+      if (!result.ok) toast.error(result.error);
+      else if (accept) toast.success(`You joined “${result.data.roomName}”`);
+      else toast(`Invitation to “${result.data.roomName}” declined`);
     });
   }
 
@@ -101,36 +100,30 @@ export function RoomsView({
         actions={
           <>
             <Button variant="outline" onClick={openJoin}>
-              <DoorOpen size={16} /> Join
+              <DoorOpen /> Join
             </Button>
             <Button onClick={openCreate}>
-              <Plus size={16} /> Create room
+              <Plus /> Create room
             </Button>
           </>
         }
       />
 
-      {notice && (
-        <div className="mb-5 flex items-start justify-between gap-3 rounded-lg bg-primary-soft px-4 py-3 text-sm text-primary">
-          <span>{notice}</span>
-          <button onClick={() => setNotice(null)} className="font-medium hover:underline">
-            Dismiss
-          </button>
-        </div>
-      )}
-
       {/* Pending invitations */}
       {invites.length > 0 && (
-        <Card className="mb-5">
+        <Card className="mb-5 border-primary/30">
           <CardHeader>
             <CardTitle>Invitations</CardTitle>
           </CardHeader>
           <CardContent className="divide-y divide-border">
             {invites.map((invite) => (
               <div key={invite.id} className="flex flex-wrap items-center gap-3 py-3">
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary-soft text-primary">
+                  <Mail size={18} />
+                </span>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">{invite.roomName}</p>
-                  <p className="text-xs text-muted">
+                  <p className="text-xs text-muted-foreground">
                     Invited by {invite.invitedByName} · expires {formatDate(invite.expiresAt)}
                   </p>
                 </div>
@@ -153,9 +146,22 @@ export function RoomsView({
 
       {rooms.length === 0 && (
         <Card>
-          <CardContent className="py-16 text-center text-sm text-muted">
-            You&apos;re not in a room yet. Create one for your flat, or join with an invite code.
-          </CardContent>
+          <EmptyState
+            className="py-16"
+            icon={<Home />}
+            title="You're not in a room yet"
+            description="Create one for your flat, or join with an invite code a flatmate shared."
+            action={
+              <div className="flex flex-wrap justify-center gap-2">
+                <Button variant="outline" onClick={openJoin}>
+                  <DoorOpen /> Join with a code
+                </Button>
+                <Button onClick={openCreate}>
+                  <Plus /> Create room
+                </Button>
+              </div>
+            }
+          />
         </Card>
       )}
 
@@ -167,10 +173,10 @@ export function RoomsView({
             <Link
               key={room.id}
               href={`/rooms/${room.id}`}
-              className="group rounded-[var(--radius)] border border-border bg-surface p-5 transition-colors hover:border-border-strong"
+              className="group rounded-xl border border-border bg-card p-5 shadow-xs transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md"
             >
               <div className="flex items-start justify-between">
-                <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-soft font-semibold text-primary">
+                <span className="flex size-10 items-center justify-center rounded-xl bg-primary-soft font-semibold text-primary">
                   {room.name.slice(0, 1)}
                 </span>
                 {room.archived ? (
@@ -183,11 +189,13 @@ export function RoomsView({
                   <Badge tone="negative">You owe</Badge>
                 )}
               </div>
-              <h3 className="mt-3 font-semibold tracking-tight group-hover:text-primary">
+              <h3 className="mt-3 truncate font-semibold tracking-tight group-hover:text-primary">
                 {room.name}
               </h3>
               {room.description && (
-                <p className="mt-0.5 line-clamp-1 text-sm text-muted">{room.description}</p>
+                <p className="mt-0.5 line-clamp-1 text-sm text-muted-foreground">
+                  {room.description}
+                </p>
               )}
 
               <div className="mt-4 flex items-center justify-between">
@@ -198,26 +206,28 @@ export function RoomsView({
                       name={m.name}
                       color={m.avatarColor}
                       size="sm"
-                      className="ring-2 ring-surface"
+                      className="ring-2 ring-card"
                     />
                   ))}
                   {active.length > 4 && (
-                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-surface-2 text-xs font-medium text-muted ring-2 ring-surface">
+                    <span className="flex size-7 items-center justify-center rounded-full bg-muted text-xs font-medium text-muted-foreground ring-2 ring-card">
                       +{active.length - 4}
                     </span>
                   )}
                 </div>
-                <span className="flex items-center gap-1 text-xs text-muted">
+                <span className="flex items-center gap-1 text-xs text-muted-foreground">
                   <Users size={13} /> {active.length}
                 </span>
               </div>
 
               <div className="mt-4 border-t border-border pt-3 text-sm">
-                <span className="text-muted">Your balance: </span>
+                <span className="text-muted-foreground">Your balance: </span>
                 <span
-                  className={`font-semibold tabular ${
-                    net > 0 ? "text-positive" : net < 0 ? "text-negative" : "text-foreground"
-                  }`}
+                  className={cn(
+                    "font-semibold tabular",
+                    net > 0 && "text-positive",
+                    net < 0 && "text-negative",
+                  )}
                 >
                   {formatNpr(net, { sign: true })}
                 </span>
@@ -235,11 +245,7 @@ export function RoomsView({
         description="Set up a shared space for your flat, trip, or group."
       >
         <form onSubmit={createRoom} className="space-y-4">
-          {error && (
-            <div className="rounded-lg bg-negative-soft px-3 py-2 text-sm text-negative">
-              {error}
-            </div>
-          )}
+          <FormError message={error} />
           <div>
             <Label htmlFor="name">Room name</Label>
             <Input id="name" name="name" placeholder="e.g. Baluwatar Flat 3B" autoFocus />
@@ -251,27 +257,29 @@ export function RoomsView({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label htmlFor="timezone">Timezone</Label>
-              <Select id="timezone" name="timezone" defaultValue="Asia/Kathmandu">
-                {TIMEZONES.map((tz) => (
-                  <option key={tz} value={tz}>
-                    {tz}
-                  </option>
-                ))}
-              </Select>
+              <OptionSelect
+                id="timezone"
+                name="timezone"
+                defaultValue="Asia/Kathmandu"
+                options={TIMEZONES.map((tz) => ({ value: tz, label: tz }))}
+              />
             </div>
             <div>
               <Label htmlFor="currency">Currency</Label>
-              <Select id="currency" name="currency" defaultValue="NPR" disabled>
-                <option value="NPR">NPR (Rs)</option>
-              </Select>
+              <OptionSelect
+                id="currency"
+                defaultValue="NPR"
+                disabled
+                options={[{ value: "NPR", label: "NPR (Rs)" }]}
+              />
             </div>
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="ghost" onClick={() => setCreateOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={pending}>
-              {pending ? "Creating…" : "Create room"}
+            <Button type="submit" loading={pending}>
+              Create room
             </Button>
           </div>
         </form>
@@ -285,21 +293,23 @@ export function RoomsView({
         description="Enter the invite code a flatmate shared with you."
       >
         <form onSubmit={joinRoom} className="space-y-4">
-          {error && (
-            <div className="rounded-lg bg-negative-soft px-3 py-2 text-sm text-negative">
-              {error}
-            </div>
-          )}
+          <FormError message={error} />
           <div>
             <Label htmlFor="code">Invite code</Label>
-            <Input id="code" name="code" placeholder="e.g. RK-ABCD-2345" autoFocus className="uppercase" />
+            <Input
+              id="code"
+              name="code"
+              placeholder="e.g. RK-ABCD-2345"
+              autoFocus
+              className="font-mono uppercase tracking-wider"
+            />
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="ghost" onClick={() => setJoinOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={pending}>
-              {pending ? "Joining…" : "Join room"}
+            <Button type="submit" loading={pending}>
+              Join room
             </Button>
           </div>
         </form>

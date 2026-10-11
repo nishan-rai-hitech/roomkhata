@@ -1,16 +1,26 @@
 "use client";
 
+import { CategoryIcon } from "@/components/expenses/category-icon";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select } from "@/components/ui/select";
+import { EmptyState } from "@/components/ui/empty-state";
+import { OptionSelect } from "@/components/ui/select";
 import { StatCard } from "@/components/ui/stat";
 import { PageHeader } from "@/components/shell/page-header";
 import { CATEGORY_COLORS } from "@/lib/constants";
 import { formatNpr, toRupees } from "@/lib/money";
 import type { Category, Expense, Room } from "@/lib/types";
-import { monthLabel } from "@/lib/utils";
-import { Download, FileText } from "lucide-react";
+import { cn, monthLabel } from "@/lib/utils";
+import {
+  ChartPie,
+  CircleAlert,
+  CircleCheck,
+  Download,
+  FileText,
+  Receipt,
+  Wallet,
+} from "lucide-react";
 import { useMemo, useState } from "react";
 
 export function ReportsView({
@@ -108,57 +118,74 @@ export function ReportsView({
         subtitle={`${room.name} · times shown in ${room.timezone}`}
         actions={
           <>
-            <Select value={month} onChange={(e) => setMonth(e.target.value)} className="w-auto">
-              {months.map((m) => (
-                <option key={m} value={m}>
-                  {monthLabel(m)}
-                </option>
-              ))}
-            </Select>
+            <OptionSelect
+              value={month}
+              onValueChange={setMonth}
+              className="w-auto min-w-40"
+              options={months.map((m) => ({ value: m, label: monthLabel(m) }))}
+            />
             <Button variant="outline" onClick={exportCsv}>
-              <Download size={16} /> CSV
+              <Download /> CSV
             </Button>
             <Button variant="outline" onClick={() => window.print()}>
-              <FileText size={16} /> PDF
+              <FileText /> PDF
             </Button>
           </>
         }
       />
 
       <div className="mb-5 grid gap-4 sm:grid-cols-3">
-        <StatCard label="Total shared spending" value={formatNpr(total)} hint={monthLabel(month)} />
-        <StatCard label="Your share" value={formatNpr(myShare)} />
-        <StatCard label="Shared expenses" value={monthExpenses.length} hint="this month" />
+        <StatCard
+          label="Total shared spending"
+          value={formatNpr(total)}
+          hint={monthLabel(month)}
+          icon={<Receipt size={16} />}
+        />
+        <StatCard label="Your share" value={formatNpr(myShare)} icon={<Wallet size={16} />} />
+        <StatCard
+          label="Shared expenses"
+          value={monthExpenses.length}
+          hint="this month"
+          icon={<ChartPie size={16} />}
+        />
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-[1fr_1fr]">
+      <div className="grid gap-5 lg:grid-cols-2">
         {/* Category breakdown */}
         <Card>
           <CardHeader>
             <CardTitle>Spending by category</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-4">
             {byCategory.length === 0 ? (
-              <p className="py-8 text-center text-sm text-muted">No spending this month.</p>
+              <EmptyState
+                className="py-8"
+                icon={<ChartPie />}
+                title="No spending this month"
+                description="Shared expenses dated in this month will be broken down here."
+              />
             ) : (
               byCategory.map(([cat, amt]) => {
                 const pct = total > 0 ? (amt / total) * 100 : 0;
                 return (
-                  <div key={cat}>
-                    <div className="mb-1 flex items-center justify-between text-sm">
-                      <span className="font-medium">{cat}</span>
-                      <span className="tabular text-muted">
-                        {formatNpr(amt)} · {pct.toFixed(0)}%
-                      </span>
-                    </div>
-                    <div className="h-2 overflow-hidden rounded-full bg-surface-2">
-                      <div
-                        className="h-full rounded-full"
-                        style={{
-                          width: `${pct}%`,
-                          backgroundColor: CATEGORY_COLORS[cat as Category] ?? "#64748b",
-                        }}
-                      />
+                  <div key={cat} className="flex items-center gap-3">
+                    <CategoryIcon category={cat} className="size-9 rounded-lg [&_svg]:size-4" />
+                    <div className="min-w-0 flex-1">
+                      <div className="mb-1.5 flex items-center justify-between gap-3 text-sm">
+                        <span className="truncate font-medium">{cat}</span>
+                        <span className="tabular text-muted-foreground">
+                          {formatNpr(amt)} · {pct.toFixed(0)}%
+                        </span>
+                      </div>
+                      <div className="h-2 overflow-hidden rounded-full bg-muted">
+                        <div
+                          className="h-full rounded-full"
+                          style={{
+                            width: `${pct}%`,
+                            backgroundColor: CATEGORY_COLORS[cat as Category] ?? "#64748b",
+                          }}
+                        />
+                      </div>
                     </div>
                   </div>
                 );
@@ -181,10 +208,12 @@ export function ReportsView({
                 </span>
                 <div className="text-right">
                   <p className="text-sm tabular">
-                    <span className="text-muted">paid </span>
+                    <span className="text-muted-foreground">paid </span>
                     <span className="font-semibold">{formatNpr(m.paid)}</span>
                   </p>
-                  <p className="text-xs tabular text-muted">share {formatNpr(m.share)}</p>
+                  <p className="text-xs tabular text-muted-foreground">
+                    share {formatNpr(m.share)}
+                  </p>
                 </div>
               </div>
             ))}
@@ -194,12 +223,14 @@ export function ReportsView({
 
       {/* Reconciliation */}
       <div
-        className={`mt-5 flex items-center gap-2 rounded-lg px-4 py-3 text-sm ${
-          reconciles ? "bg-positive-soft text-positive" : "bg-negative-soft text-negative"
-        }`}
+        className={cn(
+          "mt-5 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-xl px-4 py-3 text-sm",
+          reconciles ? "bg-positive-soft text-positive" : "bg-negative-soft text-negative",
+        )}
       >
+        {reconciles ? <CircleCheck size={16} /> : <CircleAlert size={16} />}
         <span className="font-medium">
-          {reconciles ? "✓ Report reconciles" : "✗ Reconciliation mismatch"}
+          {reconciles ? "Report reconciles" : "Reconciliation mismatch"}
         </span>
         <span className="text-xs opacity-80">
           Category total ({formatNpr(catSum)}) and member shares ({formatNpr(shareSum)}) both equal

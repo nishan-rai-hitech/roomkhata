@@ -2,12 +2,14 @@
 
 import { deleteExpenseAction } from "@/app/actions/expenses";
 import { Button } from "@/components/ui/button";
-import { Modal } from "@/components/ui/modal";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { FormError } from "@/components/ui/form-error";
 import { Input, Label } from "@/components/ui/input";
 import { Pencil, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { toast } from "sonner";
 
 export function ExpenseActions({ id }: { id: string }) {
   const router = useRouter();
@@ -24,61 +26,51 @@ export function ExpenseActions({ id }: { id: string }) {
         setError(result.error);
         return;
       }
+      toast.success("Expense deleted", { description: "Balances have been updated." });
       router.push("/expenses");
     });
   }
 
   return (
     <>
-      <Link href={`/expenses/${id}/edit`}>
-        <Button variant="outline">
-          <Pencil size={15} /> Edit
-        </Button>
-      </Link>
-      <Button variant="outline" className="text-negative" onClick={() => setOpen(true)}>
-        <Trash2 size={15} /> Delete
+      <Button asChild variant="outline">
+        <Link href={`/expenses/${id}/edit`}>
+          <Pencil /> Edit
+        </Link>
+      </Button>
+      <Button
+        variant="outline"
+        className="text-negative hover:text-negative"
+        onClick={() => setOpen(true)}
+      >
+        <Trash2 /> Delete
       </Button>
 
-      <Modal
+      <ConfirmDialog
         open={open}
         onClose={() => setOpen(false)}
         title="Delete this expense?"
-        description="Deleting reverses its effect on everyone's balances."
-        footer={
-          <>
-            <Button variant="ghost" onClick={() => setOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              variant="danger"
-              onClick={confirmDelete}
-              disabled={deleting || !reason.trim()}
-            >
-              {deleting ? "Deleting…" : "Delete expense"}
-            </Button>
-          </>
-        }
+        description="Deleting reverses its effect on everyone's balances. The record, who deleted it and the reason are kept in the activity log."
+        confirmLabel="Delete expense"
+        loading={deleting}
+        confirmDisabled={!reason.trim()}
+        onConfirm={confirmDelete}
       >
-        <p className="mb-3 text-sm text-muted">
-          For auditability, the original record, who deleted it, and the reason are kept in the
-          activity log rather than erased silently.
-        </p>
-        {error && (
-          <div className="mb-3 rounded-lg bg-negative-soft px-3 py-2 text-sm text-negative">
-            {error}
+        <div className="space-y-3">
+          <FormError message={error} />
+          <div>
+            <Label htmlFor="reason">Reason (required)</Label>
+            <Input
+              id="reason"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="e.g. duplicate entry"
+              maxLength={200}
+              autoFocus
+            />
           </div>
-        )}
-        <div>
-          <Label htmlFor="reason">Reason (required)</Label>
-          <Input
-            id="reason"
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            placeholder="e.g. duplicate entry"
-            autoFocus
-          />
         </div>
-      </Modal>
+      </ConfirmDialog>
     </>
   );
 }

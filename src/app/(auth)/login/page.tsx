@@ -2,6 +2,7 @@
 
 import { loginAction } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
+import { FormError } from "@/components/ui/form-error";
 import { Input, Label } from "@/components/ui/input";
 import Link from "next/link";
 import { useState, useTransition } from "react";
@@ -31,16 +32,12 @@ export default function LoginPage() {
   return (
     <div>
       <h2 className="text-2xl font-bold tracking-tight">Welcome back</h2>
-      <p className="mt-1.5 text-sm text-muted">
+      <p className="mt-1.5 text-sm text-muted-foreground">
         Log in to see your room balances.
       </p>
 
       <form onSubmit={onSubmit} className="mt-8 space-y-4" noValidate>
-        {error && (
-          <div className="rounded-lg bg-negative-soft px-3 py-2 text-sm text-negative">
-            {error}
-          </div>
-        )}
+        <FormError message={error} />
 
         <div>
           <Label htmlFor="email">Email</Label>
@@ -75,19 +72,19 @@ export default function LoginPage() {
             <button
               type="button"
               onClick={() => setShowPw((v) => !v)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-muted hover:text-foreground"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground hover:text-foreground"
             >
               {showPw ? "Hide" : "Show"}
             </button>
           </div>
         </div>
 
-        <Button type="submit" size="lg" className="w-full" disabled={loading}>
+        <Button type="submit" size="lg" className="w-full" loading={loading}>
           {loading ? "Logging in…" : "Log in"}
         </Button>
       </form>
 
-      <p className="mt-6 text-center text-sm text-muted">
+      <p className="mt-6 text-center text-sm text-muted-foreground">
         New to RoomKhata?{" "}
         <Link href="/register" className="font-medium text-primary hover:underline">
           Create an account

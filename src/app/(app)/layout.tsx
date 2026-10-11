@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/shell/app-shell";
+import { AppSkeleton } from "@/components/shell/app-skeleton";
 import { getAppContext } from "@/lib/server/data";
 import { Suspense, type ReactNode } from "react";
 
@@ -6,13 +7,7 @@ export default function AppGroupLayout({ children }: { children: ReactNode }) {
   // The session is read at request time, so the whole signed-in area streams
   // in behind this boundary (pages below may read cookies and params freely).
   return (
-    <Suspense
-      fallback={
-        <div className="flex min-h-screen items-center justify-center text-sm text-muted">
-          Loading…
-        </div>
-      }
-    >
+    <Suspense fallback={<AppSkeleton />}>
       <AuthedShell>{children}</AuthedShell>
     </Suspense>
   );

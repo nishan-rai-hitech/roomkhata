@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { Toaster } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -31,11 +33,14 @@ export default function RootLayout({
         <script
           // Apply stored theme before paint to avoid a flash of the wrong theme.
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem('rk-theme');if(t){document.documentElement.setAttribute('data-theme',t);}}catch(e){}})();`,
+            __html: `(function(){var t=null;try{t=localStorage.getItem('rk-theme');}catch(e){}if(t!=='dark'&&t!=='light'){t=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}document.documentElement.setAttribute('data-theme',t);})();`,
           }}
         />
       </head>
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <TooltipProvider delayDuration={200}>{children}</TooltipProvider>
+        <Toaster />
+      </body>
     </html>
   );
 }

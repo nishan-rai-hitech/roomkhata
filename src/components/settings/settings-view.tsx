@@ -9,17 +9,19 @@ import {
 } from "@/app/actions/settings";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { FormError } from "@/components/ui/form-error";
 import { Input, Label } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
-import { Select } from "@/components/ui/select";
+import { OptionSelect } from "@/components/ui/select";
 import { Toggle } from "@/components/ui/toggle";
 import { PageHeader } from "@/components/shell/page-header";
 import type { User } from "@/lib/types";
+import { Download, KeyRound, Trash2 } from "lucide-react";
 import { useState, useTransition } from "react";
+import { toast } from "sonner";
 
 export function SettingsView({ user, settings }: { user: User; settings: PreferencesInput }) {
-  const [notice, setNotice] = useState<{ ok: boolean; text: string } | null>(null);
   const [prefs, setPrefs] = useState(settings);
   const [passwordOpen, setPasswordOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -32,9 +34,8 @@ export function SettingsView({ user, settings }: { user: User; settings: Prefere
     const input = { name: String(fd.get("name") || ""), email: String(fd.get("email") || "") };
     startAction(async () => {
       const result = await updateProfileAction(input);
-      setNotice(
-        result.ok ? { ok: true, text: "Profile saved." } : { ok: false, text: result.error },
-      );
+      if (result.ok) toast.success("Profile saved");
+      else toast.error(result.error);
     });
   }
 
@@ -47,7 +48,7 @@ export function SettingsView({ user, settings }: { user: User; settings: Prefere
       const result = await updatePreferencesAction(next);
       if (!result.ok) {
         setPrefs(previous);
-        setNotice({ ok: false, text: result.error });
+        toast.error(result.error);
       }
     });
   }
@@ -71,7 +72,9 @@ export function SettingsView({ user, settings }: { user: User; settings: Prefere
         return;
       }
       setPasswordOpen(false);
-      setNotice({ ok: true, text: "Password changed. Other devices have been signed out." });
+      toast.success("Password changed", {
+        description: "Other devices have been signed out.",
+      });
     });
   }
 
@@ -90,19 +93,6 @@ export function SettingsView({ user, settings }: { user: User; settings: Prefere
     <div>
       <PageHeader title="Settings" subtitle="Manage your profile, preferences, and account." />
 
-      {notice && (
-        <div
-          className={`mb-5 flex items-center justify-between gap-3 rounded-lg px-4 py-3 text-sm ${
-            notice.ok ? "bg-primary-soft text-primary" : "bg-negative-soft text-negative"
-          }`}
-        >
-          <span>{notice.text}</span>
-          <button onClick={() => setNotice(null)} className="font-medium hover:underline">
-            Dismiss
-          </button>
-        </div>
-      )}
-
       <div className="grid gap-5 lg:grid-cols-[1fr_1.4fr]">
         {/* Profile */}
         <Card className="lg:row-span-2">
@@ -110,14 +100,14 @@ export function SettingsView({ user, settings }: { user: User; settings: Prefere
             <CardTitle>Profile</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="mb-4 flex items-center gap-3">
+            <div className="mb-5 flex items-center gap-3 rounded-xl bg-muted/60 p-3">
               <Avatar name={user.name} color={user.avatarColor} size="lg" />
-              <div>
-                <p className="font-medium">{user.name}</p>
-                <p className="text-sm text-muted">{user.email}</p>
+              <div className="min-w-0">
+                <p className="truncate font-medium">{user.name}</p>
+                <p className="truncate text-sm text-muted-foreground">{user.email}</p>
               </div>
             </div>
-            <form onSubmit={saveProfile} className="space-y-3">
+            <form onSubmit={saveProfile} className="space-y-4">
               <div>
                 <Label htmlFor="name">Full name</Label>
                 <Input id="name" name="name" defaultValue={user.name} />
@@ -126,7 +116,7 @@ export function SettingsView({ user, settings }: { user: User; settings: Prefere
                 <Label htmlFor="email">Email</Label>
                 <Input id="email" name="email" type="email" defaultValue={user.email} />
               </div>
-              <Button type="submit" size="sm" className="w-full" disabled={pending}>
+              <Button type="submit" className="w-full" disabled={pending}>
                 Save profile
               </Button>
             </form>
@@ -142,23 +132,27 @@ export function SettingsView({ user, settings }: { user: User; settings: Prefere
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label htmlFor="lang">Language</Label>
-                <Select
+                <OptionSelect
                   id="lang"
                   value={prefs.language}
-                  onChange={(e) => updatePrefs({ language: e.target.value })}
-                >
-                  <option value="en">English</option>
-                  <option value="ne">नेपाली (Nepali)</option>
-                </Select>
+                  onValueChange={(language) => updatePrefs({ language })}
+                  options={[
+                    { value: "en", label: "English" },
+                    { value: "ne", label: "नेपाली (Nepali)" },
+                  ]}
+                />
               </div>
               <div>
                 <Label htmlFor="currency">Default currency</Label>
-                <Select id="currency" defaultValue="NPR" disabled>
-                  <option value="NPR">NPR (Rs)</option>
-                </Select>
+                <OptionSelect
+                  id="currency"
+                  defaultValue="NPR"
+                  disabled
+                  options={[{ value: "NPR", label: "NPR (Rs)" }]}
+                />
               </div>
             </div>
-            <p className="text-xs text-muted">
+            <p className="text-xs text-muted-foreground">
               Switch light/dark using the toggle in the top bar — your choice is remembered on this
               device. Your language choice is saved, but the app is only available in English for
               now.
@@ -170,6 +164,9 @@ export function SettingsView({ user, settings }: { user: User; settings: Prefere
         <Card>
           <CardHeader>
             <CardTitle>Notifications</CardTitle>
+            <CardDescription>
+              These choices are saved to your account. Notifications aren&apos;t being sent yet.
+            </CardDescription>
           </CardHeader>
           <CardContent className="divide-y divide-border">
             <Toggle
@@ -196,9 +193,6 @@ export function SettingsView({ user, settings }: { user: User; settings: Prefere
               label="Reminders"
               description="Nudges when you owe money for a while."
             />
-            <p className="pt-3 text-xs text-muted">
-              These choices are saved to your account. Notifications aren&apos;t being sent yet.
-            </p>
           </CardContent>
         </Card>
       </div>
@@ -217,24 +211,24 @@ export function SettingsView({ user, settings }: { user: User; settings: Prefere
               setPasswordOpen(true);
             }}
           >
-            Change password
+            <KeyRound /> Change password
           </Button>
           {/* A plain link, not a client navigation: the route answers with a file download. */}
-          <a href="/api/export" download>
-            <Button variant="outline" size="sm">
-              Export my data
-            </Button>
-          </a>
+          <Button asChild variant="outline" size="sm">
+            <a href="/api/export" download>
+              <Download /> Export my data
+            </a>
+          </Button>
           <Button
             variant="outline"
             size="sm"
-            className="ml-auto text-negative"
+            className="ml-auto text-negative hover:text-negative"
             onClick={() => {
               setModalError(null);
               setDeleteOpen(true);
             }}
           >
-            Delete account
+            <Trash2 /> Delete account
           </Button>
         </CardContent>
       </Card>
@@ -246,14 +240,16 @@ export function SettingsView({ user, settings }: { user: User; settings: Prefere
         description="You'll stay signed in here; every other device is signed out."
       >
         <form onSubmit={changePassword} className="space-y-4">
-          {modalError && (
-            <div className="rounded-lg bg-negative-soft px-3 py-2 text-sm text-negative">
-              {modalError}
-            </div>
-          )}
+          <FormError message={modalError} />
           <div>
             <Label htmlFor="current">Current password</Label>
-            <Input id="current" name="current" type="password" autoComplete="current-password" autoFocus />
+            <Input
+              id="current"
+              name="current"
+              type="password"
+              autoComplete="current-password"
+              autoFocus
+            />
           </div>
           <div>
             <Label htmlFor="new">New password</Label>
@@ -273,8 +269,8 @@ export function SettingsView({ user, settings }: { user: User; settings: Prefere
             <Button type="button" variant="ghost" onClick={() => setPasswordOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={pending}>
-              {pending ? "Saving…" : "Change password"}
+            <Button type="submit" loading={pending}>
+              Change password
             </Button>
           </div>
         </form>
@@ -287,26 +283,28 @@ export function SettingsView({ user, settings }: { user: User; settings: Prefere
         description="This is permanent and cannot be undone."
       >
         <form onSubmit={deleteAccount} className="space-y-4">
-          <p className="text-sm text-muted">
+          <p className="text-sm text-muted-foreground">
             You must settle all outstanding balances and transfer ownership of any rooms you own
             before your account can be deleted — this keeps shared ledgers intact for others. Your
             past expenses stay in those rooms under the name “Deleted user”.
           </p>
-          {modalError && (
-            <div className="rounded-lg bg-negative-soft px-3 py-2 text-sm text-negative">
-              {modalError}
-            </div>
-          )}
+          <FormError message={modalError} />
           <div>
             <Label htmlFor="dpassword">Confirm with your password</Label>
-            <Input id="dpassword" name="password" type="password" autoComplete="current-password" autoFocus />
+            <Input
+              id="dpassword"
+              name="password"
+              type="password"
+              autoComplete="current-password"
+              autoFocus
+            />
           </div>
           <div className="flex justify-end gap-2 pt-1">
             <Button type="button" variant="ghost" onClick={() => setDeleteOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit" variant="danger" disabled={pending}>
-              {pending ? "Deleting…" : "Delete account"}
+            <Button type="submit" variant="destructive" loading={pending}>
+              Delete account
             </Button>
           </div>
         </form>

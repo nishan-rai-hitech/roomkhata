@@ -2,7 +2,9 @@
 
 import { requestPasswordResetAction } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
+import { FormError } from "@/components/ui/form-error";
 import { Input, Label } from "@/components/ui/input";
+import { CircleCheck } from "lucide-react";
 import Link from "next/link";
 import { useState, useTransition } from "react";
 
@@ -14,11 +16,11 @@ export default function ForgotPasswordPage() {
   if (sent) {
     return (
       <div className="text-center">
-        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-positive-soft text-positive text-xl">
-          ✓
+        <div className="mx-auto mb-4 flex size-14 items-center justify-center rounded-2xl bg-positive-soft text-positive">
+          <CircleCheck size={28} />
         </div>
         <h2 className="text-2xl font-bold tracking-tight">Check your inbox</h2>
-        <p className="mt-2 text-sm text-muted">
+        <p className="mt-2 text-sm text-muted-foreground">
           If an account exists, we&apos;ve sent a reset link. The link expires in 30 minutes.
         </p>
         <Link
@@ -34,7 +36,7 @@ export default function ForgotPasswordPage() {
   return (
     <div>
       <h2 className="text-2xl font-bold tracking-tight">Reset your password</h2>
-      <p className="mt-1.5 text-sm text-muted">
+      <p className="mt-1.5 text-sm text-muted-foreground">
         Enter your email and we&apos;ll send a reset link.
       </p>
 
@@ -52,21 +54,17 @@ export default function ForgotPasswordPage() {
         className="mt-8 space-y-4"
         noValidate
       >
-        {error && (
-          <div className="rounded-lg bg-negative-soft px-3 py-2 text-sm text-negative">
-            {error}
-          </div>
-        )}
+        <FormError message={error} />
         <div>
           <Label htmlFor="email">Email</Label>
           <Input id="email" name="email" type="email" placeholder="you@example.com" />
         </div>
-        <Button type="submit" size="lg" className="w-full" disabled={loading}>
+        <Button type="submit" size="lg" className="w-full" loading={loading}>
           {loading ? "Sending…" : "Send reset link"}
         </Button>
       </form>
 
-      <p className="mt-6 text-center text-sm text-muted">
+      <p className="mt-6 text-center text-sm text-muted-foreground">
         <Link href="/login" className="font-medium text-primary hover:underline">
           ← Back to log in
         </Link>

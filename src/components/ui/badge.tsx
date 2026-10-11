@@ -4,7 +4,7 @@ import type { HTMLAttributes } from "react";
 type Tone = "neutral" | "primary" | "positive" | "negative" | "warning";
 
 const tones: Record<Tone, string> = {
-  neutral: "bg-surface-2 text-muted",
+  neutral: "bg-muted text-muted-foreground",
   primary: "bg-primary-soft text-primary",
   positive: "bg-positive-soft text-positive",
   negative: "bg-negative-soft text-negative",

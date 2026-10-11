@@ -1,6 +1,9 @@
-/** Tiny className combiner — joins truthy values with spaces. */
-export function cn(...parts: Array<string | false | null | undefined>): string {
-  return parts.filter(Boolean).join(" ");
+import { clsx, type ClassValue } from "clsx";
+import { twMerge } from "tailwind-merge";
+
+/** className combiner — later Tailwind classes override earlier conflicting ones. */
+export function cn(...inputs: ClassValue[]): string {
+  return twMerge(clsx(inputs));
 }
 
 /** Initials from a full name, max 2 letters. */
