@@ -9,6 +9,9 @@ import { hashToken, newToken } from "./password";
 export const SESSION_COOKIE = "rk_session";
 export const ROOM_COOKIE = "rk_room";
 
+/** Browsers drop `Secure` cookies on plain HTTP, so they follow the public address. */
+export const SECURE_COOKIES = (process.env.APP_URL ?? "").startsWith("https://");
+
 const SESSION_DAYS = 30;
 
 export async function createSession(userId: string): Promise<void> {
@@ -18,7 +21,7 @@ export async function createSession(userId: string): Promise<void> {
   (await cookies()).set(SESSION_COOKIE, token, {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: SECURE_COOKIES,
     path: "/",
     expires: expiresAt,
   });

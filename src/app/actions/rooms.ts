@@ -18,7 +18,7 @@ import {
 import { db } from "@/lib/server/db";
 import { appUrl, sendMail } from "@/lib/server/mail";
 import { roomNets } from "@/lib/server/nets";
-import { ROOM_COOKIE, requireUser } from "@/lib/server/session";
+import { ROOM_COOKIE, SECURE_COOKIES, requireUser } from "@/lib/server/session";
 
 const INVITE_DAYS = 7;
 // No 0/O/1/I so codes are easy to read aloud and type.
@@ -42,7 +42,7 @@ async function selectRoom(roomId: string): Promise<void> {
   (await cookies()).set(ROOM_COOKIE, roomId, {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: SECURE_COOKIES,
     path: "/",
     maxAge: 60 * 60 * 24 * 365,
   });
